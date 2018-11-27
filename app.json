@@ -21,8 +21,13 @@
       "value": "~"
     },
     "REDBOT_INSTANCE": {
-      "description": "Only modify when you specified a different redbot instance name in CONFIG_JSON.",
+      "description": "Only modify when you specified a different redbot instance name in CONFIG_JSON. Write --no-instance for running redbot instanceless. (Ignores CONFIG_JSON)",
       "value": "heroku"
+    },
+    "OPTIONAL_ARGS": {
+      "description": "Optional arguments for advanced users. E.g. --load-cogs [LOAD_COGS [LOAD_COGS ...]] --owner 1234567890 --mentionable",
+      "value": "",
+      "required": false
     }
   }
 }
