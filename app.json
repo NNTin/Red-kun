@@ -1,0 +1,16 @@
+{
+  "name": "Red-DiscordBot",
+  "description": "A shitty & limited Heroku implementation",
+  "keywords": [
+    "discord",
+    "bot",
+    "red"
+  ],
+  "website": "https://cogs.red/",
+  "logo": "https://i.imgur.com/B470Uqu.png",
+  "env": {
+    "TOKEN": {
+      "description": "Discord Bot Token"
+    }
+  }
+}
