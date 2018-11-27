@@ -13,8 +13,16 @@
       "description": "Discord Bot Token"
     },
     "CONFIG_JSON": {
-      "description": "",
+      "description": "You need to fill out: Host, port, username, password and db_name.",
       "value": "{\"heroku\":{\"DATA_PATH\":\"/app\",\"COG_PATH_APPEND\":\"cogs\",\"CORE_PATH_APPEND\":\"core\",\"STORAGE_TYPE\":\"MongoDB\",\"STORAGE_DETAILS\":{\"HOST\":\"\",\"PORT\":0,\"USERNAME\":\"\",\"PASSWORD\":\"\",\"DB_NAME\":\"\",\"URI\":\"mongodb\"}}}"
+    },
+    "PREFIX": {
+      "description": "The prefix with which you summon RedDiscord-Bot.",
+      "value": "~"
+    },
+    "REDBOT_INSTANCE": {
+      "description": "Only modify when you specified a different redbot instance name in CONFIG_JSON.",
+      "value": "heroku"
     }
   }
 }
