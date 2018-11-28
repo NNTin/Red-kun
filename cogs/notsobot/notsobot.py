@@ -105,7 +105,7 @@ class NotSoBot(getattr(commands, "Cog", object)):
         self.emoji_map = {"a": "", "b": "", "c": "©", "d": "↩", "e": "", "f": "", "g": "⛽", "h": "♓", "i": "ℹ", "j": "" or "", "k": "", "l": "", "m": "Ⓜ", "n": "♑", "o": "⭕" or "", "p": "", "q": "", "r": "®", "s": "" or "⚡", "t": "", "u": "⛎", "v": "" or "♈", "w": "〰" or "", "x": "❌" or "⚔", "y": "✌", "z": "Ⓩ", "1": "1⃣", "2": "2⃣", "3": "3⃣", "4": "4⃣", "5": "5⃣", "6": "6⃣", "7": "7⃣", "8": "8⃣", "9": "9⃣", "0": "0⃣", "$": "", "!": "❗", "?": "❓", " ": "　"}
         self.regional_map = {"z": "🇿", "y": "🇾", "x": "🇽", "w": "🇼", "v": "🇻", "u": "🇺", "t": "🇹", "s": "🇸", "r": "🇷", "q": "🇶", "p": "🇵", "o": "🇴", "n": "🇳", "m": "🇲", "l": "🇱", "k": "🇰", "j": "🇯", "i": "🇮", "h": "🇭", "g": "🇬", "f": "🇫", "e": "🇪", "d": "🇩", "c": "🇨", "b": "🇧", "a": "🇦"}
         self.emote_regex = re.compile(r'<:.*:(?P<id>\d*)>')
-        self.retro_regex = re.compile(r"((https)(\:\/\/|)?u3\.photofunia\.com\/.\/results\/.\/.\/.*(\.jpg\?download))")
+        self.retro_regex = re.compile(r"((https)(\:\/\/|)?u2\.photofunia\.com\/.\/results\/.\/.\/.*(\.jpg\?download))")
         self.voice_list = ['`Allison - English/US (Expressive)`', '`Michael - English/US`', '`Lisa - English/US`', '`Kate - English/UK`', '`Renee - French/FR`', '`Birgit - German/DE`', '`Dieter - German/DE`', '`Francesca - Italian/IT`', '`Emi - Japanese/JP`', '`Isabela - Portuguese/BR`', '`Enrique - Spanish`', '`Laura - Spanish`', '`Sofia - Spanish/NA`']
         self.scrap_regex = re.compile(",\"ou\":\"([^`]*?)\"")
         # self.google_keys = bot.google_keys
@@ -280,7 +280,7 @@ class NotSoBot(getattr(commands, "Cog", object)):
                         if str(math.floor(float(s_url))).isdigit():
                             int_scale = int(math.floor(float(s_url)))
                             scale_msg = '`Scale: {0}`\n'.format(int_scale)
-                            if int_scale > scale_limit and ctx.message.author.id != self.bot.owner.id:
+                            if int_scale > scale_limit and await ctx.bot.is_owner(ctx.author):
                                 int_scale = scale_limit
                                 scale_msg = '`Scale: {0} (Limit: <= {1})`\n'.format(int_scale, scale_limit)
                             continue
@@ -544,7 +544,7 @@ class NotSoBot(getattr(commands, "Cog", object)):
         except Exception as e:
             await ctx.send(e)
 
-    def do_gmagik(self, ctx, gif, gif_dir, rand):
+    def do_gmagik(self, is_owner, gif, gif_dir, rand):
         try:
             try:
                 frame = PIL.Image.open(gif)
@@ -562,7 +562,7 @@ class NotSoBot(getattr(commands, "Cog", object)):
                 except EOFError:
                     break
             imgs = glob.glob(gif_dir+"*_{0}.png".format(rand))
-            if len(imgs) > 150 and ctx.message.author.id != self.bot.owner.id:
+            if (len(imgs) > 150) and not is_owner:
                 for image in imgs:
                     os.remove(image)
                 os.remove(gif)
@@ -612,12 +612,13 @@ class NotSoBot(getattr(commands, "Cog", object)):
             gifout = gif_dir+'2_{0}.gif'.format(rand)
             print(url)
             await self.download(url, gifin)
-            if os.path.getsize(gifin) > 5000000 and ctx.message.author.id != self.bot.owner.id:
+            is_owner = await ctx.bot.is_owner(ctx.author)
+            if os.path.getsize(gifin) > 5000000 and not is_owner:
                 await ctx.send(":no_entry: `GIF Too Large (>= 5 mb).`")
                 os.remove(gifin)
                 return
             try:
-                result = await self.bot.loop.run_in_executor(None, self.do_gmagik, ctx, gifin, gif_dir, rand)
+                result = await self.bot.loop.run_in_executor(None, self.do_gmagik, is_owner, gifin, gif_dir, rand)
             except Exception as e:
                 print("Failing here")
                 print(e)
@@ -973,7 +974,7 @@ class NotSoBot(getattr(commands, "Cog", object)):
                 location2 = gif_dir+'2_{0}.gif'.format(rand)
                 x = await ctx.message.channel.send( "ok, processing")
                 await self.download(url, location)
-                if os.path.getsize(location) > 3000000 and ctx.message.author.id != self.bot.owner.id:
+                if os.path.getsize(location) > 3000000 and await ctx.bot.is_owner(ctx.author):
                     await ctx.send("Sorry, GIF Too Large!")
                     os.remove(location)
                     return
@@ -982,7 +983,7 @@ class NotSoBot(getattr(commands, "Cog", object)):
                     await ctx.send(result)
                     return
                 list_imgs = glob.glob(gif_dir+"*_{0}.png".format(rand))
-                if len(list_imgs) > 120 and ctx.message.author.id != self.bot.owner.id:
+                if len(list_imgs) > 120 and await ctx.bot.is_owner(ctx.author):
                     await ctx.send("Sorry, GIF has too many frames!")
                     for image in list_imgs:
                         os.remove(image)
@@ -1092,138 +1093,6 @@ class NotSoBot(getattr(commands, "Cog", object)):
         except Exception as e:
             print(e)
             return False
-
-    @commands.command(pass_context=True, aliases=['w2x', 'waifu2x', 'enlarge', 'upscale'])
-    @commands.cooldown(1, 15)
-    async def resize(self, ctx, *urls):
-        try:
-            get_images = await self.get_images(ctx, urls=urls, scale=10, limit=1)
-            if not get_images:
-                return
-            url = get_images[0][0]
-            size = get_images[1]
-            if size is None:
-                size = 3
-            scale_msg = get_images[2]
-            if scale_msg is None:
-                scale_msg = ''
-            else:
-                scale_msg = '\n'+scale_msg
-            do_2 = False
-            rand = self.random()
-            x = await ctx.message.channel.send( "ok, resizing `{0}` by `{1}`".format(url, str(size)))
-            b = await self.bytes_download(url)
-            if sys.getsizeof(b) > 3000000:
-                await ctx.send("Sorry, image too large for waifu2x guilds!")
-                return
-            await x.edit("25%, resizing")
-            headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:43.0) Gecko/20100101 Firefox/43.0'}
-            payload = aiohttp.FormData()
-            payload.add_field('url', url)
-            payload.add_field('scale', str(size))
-            payload.add_field('style', 'art')
-            payload.add_field('noise', '3')
-            payload.add_field('comp', '10')
-            await x.edit("50%, w2x")
-            try:
-                with aiohttp.ClientSession() as session:
-                    async with session.post('http://waifu2x.me/convert', data=payload, headers=headers) as r:
-                        txt = await r.text()
-                download_url = 'http://waifu2x.me/{0}'.format(txt)
-                final = None
-            except asyncio.TimeoutError:
-                do_2 = True
-            if do_2:
-                idk = []
-                if size == 1:
-                    idk.append(2)
-                if size == 2:
-                    idk.append(2)
-                if size == 3:
-                    idk.append(1.6)
-                    idk.append(2)
-                if size == 4:
-                    idk.append(2)
-                    idk.append(2)
-                if size == 5:
-                    idk.append(1.6)
-                    idk.append(2)
-                    idk.append(2)
-                if size == 6:
-                    for i in range(3):
-                        idk.append(2)
-                if size == 7:
-                    for i in range(3):
-                        idk.append(2)
-                    idk.append(1.6)
-                if size == 8:
-                    for i in range(4):
-                        idk.append(2)
-                if size == 9:
-                    for i in range(4):
-                        idk.append(2)
-                    idk.append(1.6)
-                if size == 10:
-                    for i in range(5):
-                        idk.append(2)
-                for s in idk:
-                    if final:
-                        b = final
-                    if s == 2:
-                        headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:43.0) Gecko/20100101 Firefox/43.0'}
-                        payload = aiohttp.FormData()
-                        payload.add_field('scale', '2')
-                        payload.add_field('style', 'art')
-                        payload.add_field('noise', '1')
-                        payload.add_field('url', url)
-                        with aiohttp.ClientSession() as session:
-                            async with session.post('http://waifu2x.udp.jp/api', data=payload, headers=headers) as r:
-                                raw = await r.read()
-                    elif s == 1.6:
-                        headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:43.0) Gecko/20100101 Firefox/43.0'}
-                        payload = aiohttp.FormData()
-                        payload.add_field('scale', '1.6')
-                        payload.add_field('style', 'art')
-                        payload.add_field('noise', '1')
-                        payload.add_field('url', url)
-                        with aiohttp.ClientSession() as session:
-                            async with session.post('http://waifu2x.udp.jp/api', data=payload, headers=headers) as r:
-                                raw = await r.read()
-                    final = BytesIO(raw)
-                    final.seek(0)
-            if final is None:
-                final = await self.bytes_download(download_url)
-            if sys.getsizeof(final) > 8388608:
-                await ctx.send("Sorry, image too large for discord!")
-                return
-            await x.edit("100%, uploading")
-            i = 0
-            while sys.getsizeof(final) == 88 and i < 5:
-                final = await self.bytes_download(download_url)
-                await asyncio.sleep(0.3)
-                if sys.getsizeof(final) != 0:
-                    i = 5
-                else:
-                    i += 1
-            file = discord.File(final, filename='enlarge.png')
-            await ctx.send('Visit image link for accurate resize visual.'+scale_msg if size > 3 else scale_msg if scale_msg != '' else None, file=file)
-            await asyncio.sleep(3)
-            await x.delete()
-        except Exception as e:
-            await ctx.send(code.format(e))
-            await ctx.send("Error: Failed\n `Discord Failed To Upload or Waifu2x guilds Failed`")
-
-
-    @commands.command()
-    async def reverse(self, ctx, *, text:str):
-        """Reverse Text\n.revese <text>"""
-        text = text.replace('\u202E', '')
-        s = text.split('\n')
-        kek = ''
-        for x in s:
-            kek += u"\u202E " + x + '\n'
-        kek = kek
-        await ctx.send(kek)
 
     @commands.command(pass_context=True)
     @commands.cooldown(3, 5)
@@ -1375,12 +1244,6 @@ class NotSoBot(getattr(commands, "Cog", object)):
             file = discord.File(final, filename='vapewave.png')
             await ctx.send(file=file)
 
-    @commands.command(pass_context=True)
-    async def jagroshisgay(self, ctx, *, txt:str):
-        x = await ctx.message.channel.send( txt, replace_mentions=True)
-        txt = u"\u202E " + txt
-        await x.edit(txt)
-
     @commands.command(pass_context=True, aliases=['achievement', 'ach'])
     async def mc(self, ctx, *, txt:str):
         """Generate a Minecraft Achievement"""
@@ -1419,10 +1282,10 @@ class NotSoBot(getattr(commands, "Cog", object)):
             with wand.image.Image(file=b) as img:
                 if mark:
                     with wand.image.Image(file=wmm) as wm:
-                        img.watermark(image=wm, left=int(img.width/15), top=int(img.height/10))
+                        img.watermark(image=wm, left=0, top=0)
                 else:
                     with wand.image.Image(filename=wmm) as wm:
-                        img.watermark(image=wm, left=int(img.width/15), top=int(img.height/10))          
+                        img.watermark(image=wm, left=0, top=0)
                 img.save(file=final)
             final.seek(0)
             file = discord.File(final, filename='watermark.png')
@@ -1588,7 +1451,7 @@ class NotSoBot(getattr(commands, "Cog", object)):
         try:
             async with self.session.post('https://photofunia.com/effects/retro-wave?guild=3', data=payload, headers=headers) as r:
                 txt = await r.text()
-        except asyncio.TimeoutError:
+        except:
             return
         match = self.retro_regex.findall(txt)
         if match:
@@ -1825,7 +1688,7 @@ class NotSoBot(getattr(commands, "Cog", object)):
             return
         for url in get_images:      
             b = await self.bytes_download(url)
-            img = PIL.Image.open(b).convert('RGBA')
+            img = PIL.Image.open(b).convert('RGB')
             img = PIL.ImageOps.invert(img)
             final = BytesIO()
             img.save(final, 'png')

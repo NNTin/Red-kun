@@ -202,23 +202,27 @@ class Tweets(getattr(commands, "Cog", object)):
         """menu control logic for this taken from
            https://github.com/Lunar-Dust/Dusty-Cogs/blob/master/menu/menu.py"""
         s = post_list[page]
-        em = await self.build_tweet_embed(s)
+        if ctx.channel.permissions_for(ctx.me).embed_links:
+            em = await self.build_tweet_embed(s)
+        else:
+            em = None
+        post_url = "https://twitter.com/{}/status/{}".format(status.user.screen_name, status.id)
         if not message:
-            message = await ctx.send(embed=em)
+            message = await ctx.send(post_url, embed=em)
             await message.add_reaction("⬅")
             await message.add_reaction("❌")
             await message.add_reaction("➡")
         else:
             # message edits don't return the message object anymore lol
-            await message.edit(embed=em)
+            await message.edit(content=post_url, embed=em)
         check = lambda react, user: user == ctx.message.author and react.emoji in ["➡", "⬅",
                                                                                    "❌"] and react.message.id == message.id
         try:
             react, user = await self.bot.wait_for("reaction_add", check=check, timeout=timeout)
         except asyncio.TimeoutError:
-            await message.remove_reaction("⬅", self.bot.user)
-            await message.remove_reaction("❌", self.bot.user)
-            await message.remove_reaction("➡", self.bot.user)
+            await message.remove_reaction("⬅", ctx.me)
+            await message.remove_reaction("❌", ctx.me)
+            await message.remove_reaction("➡", ctx.me)
             return None
         else:
             reacts = {v: k for k, v in numbs.items()}
@@ -229,10 +233,8 @@ class Tweets(getattr(commands, "Cog", object)):
                     next_page = 0  # Loop around to the first item
                 else:
                     next_page = page + 1
-                try:
+                if ctx.channel.permissions_for(ctx.me).manage_messages:
                     await message.remove_reaction("➡", ctx.message.author)
-                except:
-                    pass
                 return await self.tweet_menu(ctx, post_list, message=message,
                                              page=next_page, timeout=timeout)
             elif react == "back":
@@ -241,10 +243,8 @@ class Tweets(getattr(commands, "Cog", object)):
                     next_page = len(post_list) - 1  # Loop around to the last item
                 else:
                     next_page = page - 1
-                try:
+                if ctx.channel.permissions_for(ctx.me).manage_messages:
                     await message.remove_reaction("⬅", ctx.message.author)
-                except:
-                    pass
                 return await self.tweet_menu(ctx, post_list, message=message,
                                              page=next_page, timeout=timeout)
             else:
@@ -321,7 +321,10 @@ class Tweets(getattr(commands, "Cog", object)):
                 msg += "{}. [{}]({})\n".format(trends.index(trend) + 1, trend["name"], trend["url"])
         em.description = msg[:2000]
         em.timestamp = dt.utcnow()
-        await ctx.send(embed=em)
+        if ctx.channel.permissions_for(ctx.me).embed_links:
+            await ctx.send(embed=em)
+        else:
+            await ctx.send("```\n{}```".format(msg[:1990]))
 
     @_tweets.command(no_pm=True, name='getuser')
     async def get_user(self, ctx, username: str):
@@ -349,7 +352,10 @@ class Tweets(getattr(commands, "Cog", object)):
             emb.add_field(name="Verified", value="Yes")
         footer = "Created at "
         emb.set_footer(text=footer)
-        await ctx.send(embed=emb)
+        if ctx.channel.permissions_for(ctx.me).embed_links:
+            await ctx.send("<"+profile_url+">", embed=emb)
+        else:
+            await ctx.send(profile_url)
 
     @_tweets.command(no_pm=True, name='gettweets')
     async def get_tweets(self, ctx, username: str, count: int = 10):
@@ -390,6 +396,7 @@ class Tweets(getattr(commands, "Cog", object)):
 
     @commands.group(name='autotweet')
     @checks.admin_or_permissions(manage_channels=True)
+    @commands.guild_only()
     async def _autotweet(self, ctx):
         """Command for setting accounts and channels for posting"""
         pass
