@@ -1,0 +1,20 @@
+{
+    "author": [
+        "mikeshardmind(Sinbad)"
+    ],
+    "install_msg": "If you need help, I have a channel in https://discord.gg/mb85deu",
+    "name": "QuoteTools",
+    "disabled": false,
+    "short": "Quote messages by ID",
+    "description": "Gets messages by ID. Works across Channels and servers.",
+    "tags": [
+        "quote",
+        "quotetools"
+    ],
+    "hidden": false,
+    "min_python_version": [
+        3,
+        6,
+        0
+    ]
+}
