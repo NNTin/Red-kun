@@ -1,0 +1,17 @@
+{
+    "author": ["mikeshardmind(Sinbad)"],
+    "install_msg": "If you need help, I have a channel in https://discord.gg/mb85deu",
+    "name": "EmbedMaker",
+    "disabled": false,
+    "short": "Embeds",
+    "description": "Highly featured embed creation",
+    "tags": [
+        "embed",
+        "embedmaker"
+    ],
+    "hidden": false,
+    "min_python_version": [3, 6, 0],
+    "requirements": [
+        "python-dateutil", "pytz"
+    ]
+}
