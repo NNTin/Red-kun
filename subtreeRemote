@@ -1,2 +1,2 @@
-COGS_REPOSITORY=""
-COGS_BRANCH=""
+COGS_REPOSITORY="https://github.com/mikeshardmind/SinbadCogs.git"
+COGS_BRANCH="v3"
