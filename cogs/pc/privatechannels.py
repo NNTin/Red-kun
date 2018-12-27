@@ -7,6 +7,10 @@ import re
 import sys
 from redbot.core import Config, checks, commands
 
+# todo: remove the right of changing text/voice channel name directly. Do it via the bot. (Uniform naming between
+# todo: channel, voice and role.)
+# todo: logging on the specific voice channel (combat join-leave spam -> report to moderator)
+
 
 class PrivateChannels(commands.Cog):
     """
@@ -53,18 +57,23 @@ class PrivateChannels(commands.Cog):
         """
         Initializes private channels, run only once
         """
-        category = await ctx.guild.create_category('dynamic room')
-        await self.config.guild(ctx.guild).dynamiccategory.set(category.id)
-        await ctx.guild.create_voice_channel(name=choice(self.channel_names), category=category)
+        p = ctx.guild.me.guild_permissions
+        if p.manage_channels and p.manage_roles and p.manage_messages:
+            category = await ctx.guild.create_category('dynamic room')
+            await self.config.guild(ctx.guild).dynamiccategory.set(category.id)
+            await ctx.guild.create_voice_channel(name=choice(self.channel_names), category=category)
+        else:
+            await ctx.send("Bot needs manage roles, manage channels and manage messages permission.")
 
     async def on_voice_state_update(self, member: Member, before: VoiceState, after: VoiceState):
         if not await self.config.guild(member.guild).dynamiccategory():
             # do nothing, user needs to run 'pcinit' to make use of this cog
             return
 
-        await self.state_change(member, before, after)
+        # todo: uncomment when this feature is more polished
+        # await self.state_change(member, before, after)
 
-        # ensuring that the method is runned only one at a time
+        # ensuring methods are ran only one at a time with a queue
         if before.channel != after.channel:
             await self.q.put((self.check_voice_channel(before.channel, member), before.channel))
             await self.q.put((self.check_voice_channel( after.channel, member), after.channel))
@@ -165,7 +174,8 @@ class PrivateChannels(commands.Cog):
 
                     # create text channel
                     overwrites = {
-                        voice_channel.guild.default_role: PermissionOverwrite(read_messages=False)
+                        voice_channel.guild.default_role: PermissionOverwrite(read_messages=False),
+                        voice_channel.guild.me: PermissionOverwrite(read_messages=True)
                     }
                     category_id = await guild_group.dynamiccategory()
                     category = self.bot.get_channel(id=category_id)
@@ -176,8 +186,10 @@ class PrivateChannels(commands.Cog):
 
                     # basic announcement
                     embed = Embed(description='{} joined the voice channel first and thus has elevated privileges. '
-                                              'He/she can delete messages and change the associated voice/'
-                                              'text channel name.'.format(admin.mention),
+                                              'He/she can delete messages in this text channel as well as change '
+                                              'the text/voice channel names. Furthermore if desired he/she can '
+                                              'set a user limit on the voice channel to ensure no one else interrupts '
+                                              'your privacy.'.format(admin.mention),
                                   color=member.color)
                     embed.set_author(icon_url=admin.avatar_url_as(), name="Announcement")
                     embed.add_field(name='How does this work?',
@@ -189,17 +201,11 @@ class PrivateChannels(commands.Cog):
                     embed.add_field(name='Why?',
                                     value='To give you a little bit of privacy among your close friends.',
                                     inline=False)
-                    embed.add_field(name='TODOs',
-                                    value='Give the "admin" of the personal text channel the right to lock the voice '
-                                          'channel preventing others from suddenly joining.\n'
-                                          'Optional logging. (Default enabled to combat join-leave spammers. Report '
-                                          'them to the moderation team.)\n'
-                                          'Come up with a good default naming system.',
-                                    inline=False)
                     embed.add_field(name='Warning',
-                                    value='With power comes great responsibility. Moderators reserve the right '
+                                    value='With great power comes great responsibility. Moderators reserve the right '
                                           'to ban you from the server if you choose to rename your voice and text '
-                                          'channels to offensive or otherwise obnoxious names.',
+                                          'channels to offensive names or practice otherwise obnoxious behavior.\n'
+                                          'Although you have a private discussion platform **rules still apply!**',
                                     inline=False)
                     embed.set_footer(text='NNTin cogs', icon_url='https://i.imgur.com/6LfN4cd.png')
                     await text_channel.send(embed=embed)
