@@ -1,8 +1,11 @@
 {
-    "AUTHOR" : "Linley#8686",
-    "DESCRIPTION" : "private conversations in a public server",
-    "SHORT" : "privacy",
-    "DISABLED" : false,
-    "NAME" : "PrivateChannels",
-    "TAGS" : ["private"]
+    "author": ["NNTin (Linley#8686)"],
+    "install_msg": "Support server: https://discord.gg/YBNzz9h",
+    "name": "PrivateChannels",
+    "disabled": false,
+    "short": "pc",
+    "description": "Voice users get a private room to talk. After they are done talking the room is deleted.",
+    "tags": ["private"],
+    "requirements": [],
+    "hidden": false
 }
