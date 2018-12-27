@@ -1,0 +1,8 @@
+{
+    "AUTHOR" : "Linley#8686",
+    "DESCRIPTION" : "private conversations in a public server",
+    "SHORT" : "privacy",
+    "DISABLED" : false,
+    "NAME" : "PrivateChannels",
+    "TAGS" : ["private"]
+}
