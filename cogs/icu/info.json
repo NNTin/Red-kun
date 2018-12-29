@@ -1,0 +1,11 @@
+{
+    "author": ["NNTin (Linley#8686)"],
+    "install_msg": "Support server: https://discord.gg/YBNzz9h",
+    "name": "ICU",
+    "disabled": false,
+    "short": "icu",
+    "description": "Teach a valuable lesson about pinging @everyone or hand out roles for pinging certain users or roles.",
+    "tags": ["lesson", "troll", "meme"],
+    "requirements": [],
+    "hidden": false
+}
