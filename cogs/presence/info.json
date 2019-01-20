@@ -1,0 +1,11 @@
+{
+    "author": ["NNTin (Linley#8686)"],
+    "install_msg": "Support server: https://discord.gg/YBNzz9h",
+    "name": "Presence Roles",
+    "disabled": false,
+    "short": "presence",
+    "description": "Give out roles depending on the status/presence of your members.",
+    "tags": ["utility", "status", "presence", "role"],
+    "requirements": [],
+    "hidden": false
+}
