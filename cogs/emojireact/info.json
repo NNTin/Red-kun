@@ -1,0 +1,30 @@
+{
+    "author" : [
+        "TrustyJAID"
+    ],
+    "bot_version" : [
+        3,
+        0,
+        0
+    ],
+    "description" : "React to messages containing any emojis!",
+    "disabled" : false,
+    "hidden" : false,
+    "install_msg" : "React to message emojis automatically!",
+    "min_python_version" : [
+        3,
+        6,
+        2
+    ],
+    "name" : "EmojiReact",
+    "permissions" : [
+        "add_reactions"
+    ],
+    "required_cogs" : [],
+    "requirements" : [],
+    "short" : "Emoji Reaction",
+    "tags" : [
+        "fun"
+    ],
+    "type" : "COG"
+}

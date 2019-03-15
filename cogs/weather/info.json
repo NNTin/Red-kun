@@ -1,0 +1,31 @@
+{
+    "author" : [
+        "TrustyJAID"
+    ],
+    "bot_version" : [
+        3,
+        0,
+        0
+    ],
+    "description" : "Gathers weather data for a city.",
+    "disabled" : false,
+    "hidden" : false,
+    "install_msg" : "gathers weather data.",
+    "min_python_version" : [
+        3,
+        6,
+        2
+    ],
+    "name" : "weather",
+    "permissions" : [
+        "embed_links"
+    ],
+    "required_cogs" : [],
+    "requirements" : [],
+    "short" : "Weather",
+    "tags" : [
+        "weather",
+        "utility"
+    ],
+    "type" : "COG"
+}

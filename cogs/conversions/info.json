@@ -1,0 +1,28 @@
+{
+    "author" : [
+        "TrustyJAID"
+    ],
+    "bot_version" : [
+        3,
+        0,
+        0
+    ],
+    "description" : "Conversions for BTC, currencies, precious metals, and stocks.",
+    "disabled" : false,
+    "hidden" : false,
+    "install_msg" : "Various commands.",
+    "min_python_version" : [
+        3,
+        6,
+        2
+    ],
+    "name" : "Conversions",
+    "permissions" : [
+        "embed_links"
+    ],
+    "required_cogs" : [],
+    "requirements" : [],
+    "short" : "Conversions",
+    "tags" : [],
+    "type" : "COG"
+}

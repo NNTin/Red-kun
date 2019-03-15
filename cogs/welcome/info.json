@@ -1,0 +1,30 @@
+{
+    "author" : [
+        "irdumb",
+        "TrustyJAID"
+    ],
+    "bot_version" : [
+        3,
+        0,
+        0
+    ],
+    "description" : "Welcome new users to the server or say goodbye when they leave.",
+    "disabled" : false,
+    "hidden" : false,
+    "install_msg" : "Use `[p]welcomeset` to see what options are available.",
+    "min_python_version" : [
+        3,
+        6,
+        2
+    ],
+    "name" : "welcome",
+    "permissions" : [],
+    "required_cogs" : [],
+    "requirements" : [],
+    "short" : "Welcome new users to the server",
+    "tags" : [
+        "welcome",
+        "utility"
+    ],
+    "type" : "COG"
+}

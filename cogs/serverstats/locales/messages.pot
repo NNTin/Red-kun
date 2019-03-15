@@ -1,0 +1,647 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR ORGANIZATION
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"POT-Creation-Date: 2019-02-11 15:55+0100\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: redgettext 2.2\n"
+
+
+#: serverstats.py:89
+msgid "That option is only available for the bot owner."
+msgstr ""
+
+#: serverstats.py:110
+#, docstring
+msgid ""
+"\n"
+"        Gather useful information about servers the bot is in\n"
+"        A lot of commands are bot owner only\n"
+"    "
+msgstr ""
+
+#: serverstats.py:124
+#, docstring
+msgid ""
+"\n"
+"            Display a users avatar in chat\n"
+"        "
+msgstr ""
+
+#: serverstats.py:133
+msgid "**Avatar**"
+msgstr ""
+
+#: serverstats.py:144
+msgid "That user does not appear to exist on this server."
+msgstr ""
+
+#: serverstats.py:158
+msgid ""
+"{bot} has joined a server!\n"
+" That's **{num}** servers now!\n"
+"That's a total of **{users}** users !\n"
+"Server created on **{since}**. That's over **{passed}** days ago!"
+msgstr ""
+
+#: serverstats.py:227
+msgid "Created on **{since}**. That's over **{passed}** days ago!"
+msgstr ""
+
+#: serverstats.py:233
+msgid "**{bot_name}** joined this server on **{bot_join}**. That's over **{since_join}** days ago!"
+msgstr ""
+
+#: serverstats.py:242 serverstats.py:262
+msgid "Members :"
+msgstr ""
+
+#: serverstats.py:243
+msgid ""
+"Total users : **{total}**\n"
+"Lurkers : **{lurkers}**\n"
+"Humans : **{hum}** • Bots : **{bots}**\n"
+"📗 `{online}` 📙 `{idle}`\n"
+"📕 `{dnd}` 📓 `{off}`\n"
+"🎥 `{streaming}` 📱 `{mobile}`\n"
+msgstr ""
+
+#: serverstats.py:263
+msgid ""
+"Total users : **{total}**\n"
+"Humans : **{hum}** • Bots : **{bots}**\n"
+"📗 `{online}` 📙 `{idle}`\n"
+"📕 `{dnd}` 📓 `{off}`\n"
+"🎥 `{streaming}` 📱 `{mobile}`\n"
+msgstr ""
+
+#: serverstats.py:281
+msgid "Channels :"
+msgstr ""
+
+#: serverstats.py:282
+msgid ""
+"💬 Text : **{text}**\n"
+"🔊 Voice : **{voice}**"
+msgstr ""
+
+#: serverstats.py:287
+msgid "Utility :"
+msgstr ""
+
+#: serverstats.py:288
+msgid ""
+"Owner : {owner.mention}\n"
+"**{owner}**\n"
+"Region : **{region}**\n"
+"Verif. level : **{verif}**\n"
+"Server ID : **{id}**"
+msgstr ""
+
+#: serverstats.py:298
+msgid "Misc :"
+msgstr ""
+
+#: serverstats.py:299
+msgid ""
+"AFK channel : **{afk_chan}**\n"
+"AFK Timeout : **{afk_timeout}sec**\n"
+"Custom emojis : **{emojis}**\n"
+"Roles : **{roles}**"
+msgstr ""
+
+#: serverstats.py:310
+msgid "Special features :"
+msgstr ""
+
+#: serverstats.py:311
+msgid ""
+"{vip} VIP Regions\n"
+"{van} Vanity URL\n"
+"{splash} Splash Invite\n"
+"{m_emojis} More Emojis\n"
+"{verify} Verified"
+msgstr ""
+
+#: serverstats.py:341
+msgid ""
+"{bot} has left a server!\n"
+" That's **{num}** servers now!\n"
+"That's a total of **{users}** users !\n"
+"Server created on **{since}**. That's over **{passed}** days ago!"
+msgstr ""
+
+#: serverstats.py:360
+#, docstring
+msgid ""
+"\n"
+"            Post a large size emojis in chat\n"
+"        "
+msgstr ""
+
+#: serverstats.py:378
+msgid "That doesn't appear to be a valid emoji"
+msgstr ""
+
+#: serverstats.py:386
+#, docstring
+msgid ""
+"\n"
+"            Sets a specified channels topic\n"
+"            \n"
+"            `channel` is optional and if not supplied will use the current channel\n"
+"            Note: The maximum number of characters is 1024\n"
+"        "
+msgstr ""
+
+#: serverstats.py:398
+msgid "I require the \"Manage Channels\" permission to execute that command."
+msgstr ""
+
+#: serverstats.py:410
+msgid ""
+"Please provide a reinvite link/message.\n"
+"Type `exit` for no invite link/message."
+msgstr ""
+
+#: serverstats.py:417
+msgid "I Guess not."
+msgstr ""
+
+#: serverstats.py:443
+#, docstring
+msgid ""
+"\n"
+"            Perform various actions on users who haven't spoken in x days\n"
+"\n"
+"            Note: This will only check if a user has talked in the past x days whereas \n"
+"            discords built in Prune checks online status\n"
+"        "
+msgstr ""
+
+#: serverstats.py:453
+#, docstring
+msgid ""
+"\n"
+"            List the users who have not talked in x days\n"
+"        "
+msgstr ""
+
+#: serverstats.py:464
+msgid "Role"
+msgstr ""
+
+#: serverstats.py:467
+msgid "Discord Estimate"
+msgstr ""
+
+#: serverstats.py:470
+msgid "Estimated members to be pruned "
+msgstr ""
+
+#: serverstats.py:478
+msgid "Discord Estimate: {estimate}"
+msgstr ""
+
+#: serverstats.py:480
+msgid "Role: {role.name}"
+msgstr ""
+
+#: serverstats.py:482
+msgid ""
+"Estimated members to be pruned {num_members}\n"
+"{role}\n"
+"{members}\n"
+msgstr ""
+
+#: serverstats.py:495
+#, docstring
+msgid ""
+"\n"
+"            Kick users from the server who have been inactive for x days\n"
+"            \n"
+"            `days` is the number of days since last seen talking on the server\n"
+"            `role` is the specified role you would like to kick defaults to everyone\n"
+"            `reinvite` True/False whether to try to send the user a message before kicking\n"
+"        "
+msgstr ""
+
+#: serverstats.py:503
+msgid "That role is higher than my role so I cannot kick those members."
+msgstr ""
+
+#: serverstats.py:507
+msgid " estimated users to kick. Would you like to kick them?"
+msgstr ""
+
+#: serverstats.py:518 serverstats.py:534 serverstats.py:567 serverstats.py:574
+#: serverstats.py:609 serverstats.py:616
+msgid "I guess not."
+msgstr ""
+
+#: serverstats.py:529
+msgid "Kicked due to inactivity."
+msgstr ""
+
+#: serverstats.py:531
+msgid " users could not be DM'd an invite link"
+msgstr ""
+
+#: serverstats.py:536 serverstats.py:576 serverstats.py:618
+msgid "Done."
+msgstr ""
+
+#: serverstats.py:542
+#, docstring
+msgid ""
+"\n"
+"            Give roles to users who haven't spoken in x days\n"
+"            \n"
+"            `days` is the number of days since last seen talking on the server\n"
+"            `new_roles` The new roles to apply to a user who is inactive\n"
+"        "
+msgstr ""
+
+#: serverstats.py:549
+msgid "At least one of those roles is higher than my role so I cannot add those roles."
+msgstr ""
+
+#: serverstats.py:556
+msgid " estimated users to give the role. Would you like to reassign their roles now?"
+msgstr ""
+
+#: serverstats.py:572
+msgid "Given role due to inactivity."
+msgstr ""
+
+#: serverstats.py:582
+#, docstring
+msgid ""
+"\n"
+"            Remove roles from users who haven't spoken in x days\n"
+"            \n"
+"            `days` is the number of days since last seen talking on the server\n"
+"            `role` is the specified role you would like to remove roles defaults to everyone\n"
+"            `removed_roles` the roles to remove from inactive users\n"
+"        "
+msgstr ""
+
+#: serverstats.py:590
+msgid "At least one of those roles is higher than my role so I cannot remove those roles."
+msgstr ""
+
+#: serverstats.py:597
+msgid " estimated users to remove their roles. Would you like to reassign their roles now?"
+msgstr ""
+
+#: serverstats.py:614
+msgid "Roles removed due to inactivity."
+msgstr ""
+
+#: serverstats.py:624
+#, docstring
+msgid ""
+"\n"
+"            Set a channel to see new servers the bot is joining\n"
+"        "
+msgstr ""
+
+#: serverstats.py:630
+msgid "Posting new servers and left servers in "
+msgstr ""
+
+#: serverstats.py:636
+#, docstring
+msgid ""
+"\n"
+"            Stop bots join/leave server messages\n"
+"        "
+msgstr ""
+
+#: serverstats.py:640
+msgid "No longer posting joined or left servers."
+msgstr ""
+
+#: serverstats.py:645
+#, docstring
+msgid ""
+"\n"
+"            Checks for possible cheaters abusing the global bank and server powers\n"
+"        "
+msgstr ""
+
+#: serverstats.py:653
+msgid " is guild owner of "
+msgstr ""
+
+#: serverstats.py:656
+msgid "Not a cheater"
+msgstr ""
+
+#: serverstats.py:660
+#, docstring
+msgid ""
+"\n"
+"            Display servers a user shares with the bot\n"
+"\n"
+"            `member` can be a user ID or mention\n"
+"        "
+msgstr ""
+
+#: serverstats.py:669
+msgid " doesn't seem to be a discord user."
+msgstr ""
+
+#: serverstats.py:678 serverstats.py:693
+msgid ""
+"is on:\n"
+"\n"
+msgstr ""
+
+#: serverstats.py:684 serverstats.py:699
+msgid "is not in any shared servers!"
+msgstr ""
+
+#: serverstats.py:705
+#, docstring
+msgid ""
+"\n"
+"            Lists servers by number of users and shows number of users\n"
+"        "
+msgstr ""
+
+#: serverstats.py:720
+#, docstring
+msgid ""
+"\n"
+"            Lists servers by when the bot was added to the server\n"
+"        "
+msgstr ""
+
+#: serverstats.py:736
+#, docstring
+msgid ""
+"\n"
+"            Set a channels slowmode setting\n"
+"\n"
+"            `time` must be a number between 0 and 120\n"
+"            `channel` is the channel you want to set slowmode on defaults to current channel\n"
+"        "
+msgstr ""
+
+#: serverstats.py:745
+msgid "You can only set a number between 0 and 120"
+msgstr ""
+
+#: serverstats.py:748
+msgid "Slowmode set to `{time}` in {channel}"
+msgstr ""
+
+#: serverstats.py:755
+#, docstring
+msgid "Edit various guild settings"
+msgstr ""
+
+#: serverstats.py:760
+#, docstring
+msgid ""
+"\n"
+"        Change the server name\n"
+"        "
+msgstr ""
+
+#: serverstats.py:763 serverstats.py:788 serverstats.py:805 serverstats.py:819
+#: serverstats.py:836
+msgid "Requested by {author}"
+msgstr ""
+
+#: serverstats.py:772
+#, docstring
+msgid ""
+"\n"
+"            Modify the guilds verification level\n"
+"\n"
+"            `level` must be one of:\n"
+"            `none`, `low`, `medium`, `table flip`(`high`), or `double table flip`(`extreme`) \n"
+"        "
+msgstr ""
+
+#: serverstats.py:790
+msgid "`{}` is not a proper verification level."
+msgstr ""
+
+#: serverstats.py:800
+#, docstring
+msgid ""
+"\n"
+"        Change the system channel\n"
+"\n"
+"        This is the default discord welcome channel.\n"
+"        "
+msgstr ""
+
+#: serverstats.py:814
+#, docstring
+msgid ""
+"\n"
+"        Change the servers AFK voice channel\n"
+"\n"
+"        Defaults to no AFK channel.\n"
+"        "
+msgstr ""
+
+#: serverstats.py:828
+#, docstring
+msgid ""
+"\n"
+"        Change the servers AFK timeout\n"
+"\n"
+"        `timeout` must be a value of 60, 300, 900, 1800, or 3600.\n"
+"        "
+msgstr ""
+
+#: serverstats.py:834
+msgid "`timeout` must be a value of 60, 300, 900, 1800, or 3600."
+msgstr ""
+
+#: serverstats.py:846
+#, docstring
+msgid ""
+"\n"
+"            Lists top members on the server by join date\n"
+"\n"
+"            `number` optional[int] number of members to display at a time maximum of 50\n"
+"            `guild` can be either the server ID or name\n"
+"        "
+msgstr ""
+
+#: serverstats.py:865
+msgid "First "
+msgstr ""
+
+#: serverstats.py:865
+msgid " members of "
+msgstr ""
+
+#: serverstats.py:876
+msgid " first members"
+msgstr ""
+
+#: serverstats.py:886
+#, docstring
+msgid ""
+"\n"
+"            Lists channels and their position and ID for a server\n"
+"\n"
+"            `guild` can be either the server ID or name\n"
+"        "
+msgstr ""
+
+#: serverstats.py:898 serverstats.py:903
+msgid "Position"
+msgstr ""
+
+#: serverstats.py:977
+msgid "I cannot find or create an invite for `{guild}`"
+msgstr ""
+
+#: serverstats.py:987
+msgid "Are you sure you want to leave {guild}? (reply yes or no)"
+msgstr ""
+
+#: serverstats.py:993
+msgid "Leaving {guild}."
+msgstr ""
+
+#: serverstats.py:996
+msgid "I couldn't leave {guild}."
+msgstr ""
+
+#: serverstats.py:998
+msgid "Okay, not leaving {guild}."
+msgstr ""
+
+#: serverstats.py:1039
+#, docstring
+msgid ""
+"\n"
+"            Display info about servers the bot is on\n"
+"\n"
+"            `guild_name` can be either the server ID or partial name\n"
+"        "
+msgstr ""
+
+#: serverstats.py:1054
+#, docstring
+msgid ""
+"\n"
+"            Display number of users on a server\n"
+"\n"
+"            `guild_name` can be either the server ID or partial name\n"
+"        "
+msgstr ""
+
+#: serverstats.py:1066
+#, docstring
+msgid ""
+"\n"
+"            Displays all roles their ID and number of members in order of\n"
+"            hierarchy\n"
+"\n"
+"            `guild_name` can be either the server ID or partial name\n"
+"        "
+msgstr ""
+
+#: serverstats.py:1085
+msgid "Roles"
+msgstr ""
+
+#: serverstats.py:1103
+#, docstring
+msgid ""
+"\n"
+"            Gets a list of all reactions from specified message and displays the user ID,\n"
+"            Username, and Discriminator and the emoji name.\n"
+"        "
+msgstr ""
+
+#: serverstats.py:1130
+#, docstring
+msgid ""
+"\n"
+"            Gets total messages on the server and displays each channel \n"
+"            separately as well as the user who has posted the most in each channel\n"
+"\n"
+"            `limit` must be a number of messages to check, defaults to all messages\n"
+"            Note: This is a very slow function and may take some time to complete\n"
+"        "
+msgstr ""
+
+#: serverstats.py:1144 serverstats.py:1247
+msgid "This might take a while!"
+msgstr ""
+
+#: serverstats.py:1170 serverstats.py:1178 serverstats.py:1267
+msgid "most posts by "
+msgstr ""
+
+#: serverstats.py:1189 serverstats.py:1197
+msgid "Total Messages:"
+msgstr ""
+
+#: serverstats.py:1191 serverstats.py:1199
+msgid "Most posts by "
+msgstr ""
+
+#: serverstats.py:1208
+msgid "Most posts on the server"
+msgstr ""
+
+#: serverstats.py:1215
+msgid "Most posts (continued)"
+msgstr ""
+
+#: serverstats.py:1219 serverstats.py:1222
+msgid "Members List"
+msgstr ""
+
+#: serverstats.py:1234
+#, docstring
+msgid ""
+"\n"
+"            Gets total messages in a specific channel as well as the user who\n"
+"            has posted the most in that channel\n"
+"\n"
+"            `limit` must be a number of messages to check, defaults to all messages\n"
+"            Note: This can be a very slow function and may take some time to complete\n"
+"        "
+msgstr ""
+
+#: serverstats.py:1281
+msgid "Most posts in {channel.name}"
+msgstr ""
+
+#: serverstats.py:1292
+#, docstring
+msgid ""
+"\n"
+"            Display all server emojis in a menu that can be scrolled through\n"
+"\n"
+"            `id_emojis` return the id of emojis. Default to False, set True\n"
+"             if you want to see emojis ID's.
+"            `guild_name` can be either the server ID or partial name\n"
+"        "
+msgstr ""
+
+#: serverstats.py:1318
+msgid " Emojis"
+msgstr ""
+

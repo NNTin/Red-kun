@@ -1,0 +1,31 @@
+{
+    "author" : [
+        "Twentysix",
+        "TrustyJAID"
+    ],
+    "bot_version" : [
+        3,
+        0,
+        0
+    ],
+    "description" : "Recreation of Red v1 meme generator",
+    "disabled" : false,
+    "hidden" : false,
+    "install_msg" : "Recreation of Red v1 meme generator cog!",
+    "min_python_version" : [
+        3,
+        6,
+        2
+    ],
+    "name" : "imgflip",
+    "permissions" : [],
+    "required_cogs" : [],
+    "requirements" : [],
+    "short" : "Recreation of Red v1 meme generator",
+    "tags" : [
+        "meme",
+        "memes",
+        "fun"
+    ],
+    "type" : "COG"
+}

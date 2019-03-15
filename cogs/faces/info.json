@@ -1,0 +1,26 @@
+{
+    "author" : [
+        "TrustyJAID"
+    ],
+    "bot_version" : [
+        3,
+        0,
+        0
+    ],
+    "description" : "Japanese faces courtesy of the CIA",
+    "disabled" : false,
+    "hidden" : false,
+    "install_msg" : "Find what your face is like!",
+    "min_python_version" : [
+        3,
+        6,
+        2
+    ],
+    "name" : "Faces",
+    "permissions" : [],
+    "required_cogs" : [],
+    "requirements" : [],
+    "short" : "General commands",
+    "tags" : [],
+    "type" : "COG"
+}

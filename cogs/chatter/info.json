@@ -1,0 +1,28 @@
+{
+    "author" : [
+        "TrustyJAID"
+    ],
+    "bot_version" : [
+        3,
+        0,
+        0
+    ],
+    "description" : "Talk to your bot and build a unique dataset for conversations!",
+    "disabled" : true,
+    "hidden" : true,
+    "install_msg" : "Talk to your bot and have it learn how to talk in conversations! Recommended you unload the cleverbot cog before running.",
+    "min_python_version" : [
+        3,
+        6,
+        2
+    ],
+    "name" : "Chatterbot",
+    "permissions" : [],
+    "required_cogs" : [],
+    "requirements" : [
+        "chatterbot"
+    ],
+    "short" : "chatterbot",
+    "tags" : [],
+    "type" : "COG"
+}
