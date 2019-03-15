@@ -1,0 +1,13 @@
+{
+    "author": ["mikeshardmind(Sinbad)", "DiscordLiz"],
+    "install_msg": "THis isn't very user friendly yet, but works and is ready for use.",
+    "name": "MacroDice",
+    "disabled": false,
+    "short": "",
+    "description": "",
+    "tags": [
+    ],
+    "hidden": true,
+    "min_python_version": [3, 7, 0],
+    "requirements": ["dice"]
+}

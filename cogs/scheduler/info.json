@@ -1,13 +1,14 @@
 {
     "author": [
-        "mikeshardmind(Sinbad)"
+        "mikeshardmind(Sinbad)", "DiscordLiz"
     ],
-    "install_msg": "Not ready for use yet. Won't load. Feel free to keep an eye on progress.",
+    "install_msg": "This is a basic implementation. More features soon. Locked to mods and higher by default, use permissions to allow others. If you need help, I have a channel in https://discord.gg/mb85deu This modifies the behavior of discord.TextChannel.delete_messages, as well as the core cleanup cog partially to not break normal use, but work with commands like cleanup.",
     "name": "Scheduler",
-    "disabled": true,
-    "short": "",
-    "description": "",
+    "disabled": false,
+    "short": "A timezone aware scheduler cog",
+    "description": "A timezone aware scheduler cog",
     "tags": ["scheduler"],
-    "hidden": true,
-    "requirements": ["python-dateutil", "pytz"]
+    "hidden": false,
+    "requirements": ["python-dateutil", "pytz"],
+    "min_python_version": [3, 7, 0]
 }

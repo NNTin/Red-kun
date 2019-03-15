@@ -1,7 +1,7 @@
 import discord
 
 from .abc import MixinMeta
-from .exceptions import RoleManagementException
+from .exceptions import RoleManagementException, PermissionOrHierarchyException
 
 
 class EventMixin(MixinMeta):
@@ -58,8 +58,9 @@ class EventMixin(MixinMeta):
 
         guild = self.bot.get_guild(payload.guild_id)
         if guild:
-            if any(m.joined_at is None for m in guild.members):
-                await self.bot.request_offline_members(guild)
+            await self.maybe_update_guilds(guild)
+        else:
+            return
         member = guild.get_member(payload.user_id)
         if member.bot:
             return
@@ -69,7 +70,7 @@ class EventMixin(MixinMeta):
 
         try:
             remove = await self.is_self_assign_eligible(member, role)
-        except RoleManagementException:
+        except (RoleManagementException, PermissionOrHierarchyException):
             pass
         else:
             await self.update_roles_atomically(who=member, give=[role], remove=remove)

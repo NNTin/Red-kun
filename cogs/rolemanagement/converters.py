@@ -9,27 +9,6 @@ class NoExitParser(argparse.ArgumentParser):
         raise BadArgument()
 
 
-class DynoSyntaxConverter(RoleConverter):
-    def __init__(self):
-        super().__init__()
-
-    async def convert(self, ctx: Context, argument: str):
-        args = [c.strip() for c in argument.split(",")]
-        ret: dict = {"+": [], "-": []}
-
-        for arg in args:
-            ret[arg[0]].append(
-                await super(DynoSyntaxConverter, self).convert(ctx, arg[1:])
-            )
-
-        if not (ret["+"] or ret["-"]):
-            raise BadArgument("This requires at least one role operation.")
-
-        if not set(ret["+"]).isdisjoint(ret["-"]):
-            raise BadArgument("That's not a valid search.")
-        return ret
-
-
 class RoleSyntaxConverter(RoleConverter):
     def __init__(self):
         super().__init__()
@@ -62,9 +41,15 @@ class ComplexActionConverter(RoleConverter):
     --has-all roles
     --has-none roles
     --has-any roles
+    --has-no-roles
+    --has-exactly-nroles
+    --has-more-than-nroles
+    --has-less-than-nroles
     --has-perm permissions
     --any-perm permissions
     --not-perm permissions
+    --above role
+    --below role
     --add roles
     --remove roles
     --only-humans
@@ -77,17 +62,23 @@ class ComplexActionConverter(RoleConverter):
 
     async def convert(self, ctx: Context, argument: str) -> dict:
 
-        parser = NoExitParser(
-            description="Role management syntax help", add_help=False, allow_abbrev=True
-        )
+        parser = NoExitParser(description="Role management syntax help", add_help=False)
         parser.add_argument("--has-any", nargs="*", dest="any", default=[])
         parser.add_argument("--has-all", nargs="*", dest="all", default=[])
         parser.add_argument("--has-none", nargs="*", dest="none", default=[])
+        parser.add_argument(
+            "--has-no-roles", action="store_true", default=False, dest="noroles"
+        )
         parser.add_argument("--has-perms", nargs="*", dest="hasperm", default=[])
         parser.add_argument("--any-perm", nargs="*", dest="anyperm", default=[])
         parser.add_argument("--not-perm", nargs="*", dest="notperm", default=[])
         parser.add_argument("--add", nargs="*", dest="add", default=[])
         parser.add_argument("--remove", nargs="*", dest="remove", default=[])
+        parser.add_argument("--has-exactly-nroles", dest="quantity", type=int)
+        parser.add_argument("--has-more-than-nroles", dest="gt", type=int, default=None)
+        parser.add_argument("--has-less-than-nroles", dest="lt", type=int, default=None)
+        parser.add_argument("--above", dest="above", type=str, default=None)
+        parser.add_argument("--below", dest="below", type=str, default=None)
         hum_or_bot = parser.add_mutually_exclusive_group()
         hum_or_bot.add_argument(
             "--only-humans", action="store_true", default=False, dest="humans"
@@ -118,6 +109,12 @@ class ComplexActionConverter(RoleConverter):
                 vals["hasperm"],
                 vals["notperm"],
                 vals["anyperm"],
+                vals["noroles"],
+                bool(vals["quantity"] is not None),
+                bool(vals["gt"] is not None),
+                bool(vals["lt"] is not None),
+                vals["above"],
+                vals["below"],
             )
         ):
             raise BadArgument("You need to provide at least 1 search criterion")
@@ -127,6 +124,13 @@ class ComplexActionConverter(RoleConverter):
                 await super(ComplexActionConverter, self).convert(ctx, r)
                 for r in vals[attr]
             ]
+
+        for attr in ("below", "above"):
+            if vals[attr] is None:
+                continue
+            vals[attr] = await super(ComplexActionConverter, self).convert(
+                ctx, vals[attr]
+            )
 
         for attr in ("hasperm", "anyperm", "notperm"):
 
@@ -145,8 +149,14 @@ class ComplexSearchConverter(RoleConverter):
     --has-all roles
     --has-none roles
     --has-any roles
+    --has-no-roles
+    --has-exactly-nroles
+    --has-more-than-nroles
+    --has-less-than-nroles
     --only-humans
     --only-bots
+    --above role
+    --below role
     --has-perm permissions
     --any-perm permissions
     --not-perm permissions
@@ -158,16 +168,24 @@ class ComplexSearchConverter(RoleConverter):
         super().__init__()
 
     async def convert(self, ctx: Context, argument: str) -> dict:
-        parser = NoExitParser(
-            description="Role management syntax help", add_help=False, allow_abbrev=True
-        )
+        parser = NoExitParser(description="Role management syntax help", add_help=False)
         parser.add_argument("--has-any", nargs="*", dest="any", default=[])
         parser.add_argument("--has-all", nargs="*", dest="all", default=[])
         parser.add_argument("--has-none", nargs="*", dest="none", default=[])
+        parser.add_argument(
+            "--has-no-roles", action="store_true", default=False, dest="noroles"
+        )
         parser.add_argument("--has-perms", nargs="*", dest="hasperm", default=[])
         parser.add_argument("--any-perm", nargs="*", dest="anyperm", default=[])
         parser.add_argument("--not-perm", nargs="*", dest="notperm", default=[])
         parser.add_argument("--csv", action="store_true", default=False)
+        parser.add_argument(
+            "--has-exactly-nroles", dest="quantity", type=int, default=None
+        )
+        parser.add_argument("--has-more-than-nroles", dest="gt", type=int, default=None)
+        parser.add_argument("--has-less-than-nroles", dest="lt", type=int, default=None)
+        parser.add_argument("--above", dest="above", type=str, default=None)
+        parser.add_argument("--below", dest="below", type=str, default=None)
         hum_or_bot = parser.add_mutually_exclusive_group()
         hum_or_bot.add_argument(
             "--only-humans", action="store_true", default=False, dest="humans"
@@ -194,6 +212,12 @@ class ComplexSearchConverter(RoleConverter):
                 vals["hasperm"],
                 vals["notperm"],
                 vals["anyperm"],
+                vals["noroles"],
+                bool(vals["quantity"] is not None),
+                bool(vals["gt"] is not None),
+                bool(vals["lt"] is not None),
+                vals["above"],
+                vals["below"],
             )
         ):
             raise BadArgument("You need to provide at least 1 search criterion")
@@ -203,6 +227,13 @@ class ComplexSearchConverter(RoleConverter):
                 await super(ComplexSearchConverter, self).convert(ctx, r)
                 for r in vals[attr]
             ]
+
+        for attr in ("below", "above"):
+            if vals[attr] is None:
+                continue
+            vals[attr] = await super(ComplexSearchConverter, self).convert(
+                ctx, vals[attr]
+            )
 
         for attr in ("hasperm", "anyperm", "notperm"):
 

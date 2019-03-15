@@ -24,9 +24,12 @@ _ = lambda s: s
 #
 _ = T_
 
+DONT_HTML_SCRUB = ["link", "source", "updated", "updated_parsed"]
+
 USABLE_FIELDS = [
     "author",
     "author_detail",
+    "description",
     "comments",
     "content",
     "contributors",
@@ -57,8 +60,8 @@ class RSS(commands.Cog):
     """
 
     __author__ = "mikeshardmind(Sinbad)"
-    __version__ = "1.0.14"
-    __flavor_text__ = "Time granularity update"
+    __version__ = "1.0.22"
+    __flavor_text__ = "Slow responses wont kill the loop now."
 
     def __init__(self, bot):
         self.bot = bot
@@ -93,7 +96,7 @@ class RSS(commands.Cog):
         try:
             async with self.session.get(url, timeout=timeout) as response:
                 data = await response.read()
-        except aiohttp.ClientError:
+        except (aiohttp.ClientError, asyncio.TimeoutError):
             return None
 
         ret = feedparser.parse(data)
@@ -167,17 +170,20 @@ class RSS(commands.Cog):
 
         template = string.Template(_template)
 
-        escaped_usable_fields = {
-            k: (v if not isinstance(v, str) else html_to_text(v))
-            for k, v in entry.items()
-            if k in USABLE_FIELDS and v
-        }
+        data = {k: getattr(entry, k, None) for k in USABLE_FIELDS}
+
+        def maybe_clean(key, val):
+            if isinstance(val, str) and key not in DONT_HTML_SCRUB:
+                return html_to_text(val)
+            return val
+
+        escaped_usable_fields = {k: maybe_clean(k, v) for k, v in data.items() if v}
 
         content = template.safe_substitute(**escaped_usable_fields)
 
         if embed:
-            if len(content) > 5800:
-                content = content[:5800] + _("... (Feed data too long)")
+            if len(content) > 1980:
+                content = content[:1900] + _("... (Feed data too long)")
             timestamp = datetime(*self.process_entry_time(entry))
             embed_data = discord.Embed(
                 description=content, color=color, timestamp=timestamp
@@ -298,7 +304,11 @@ class RSS(commands.Cog):
             response = await self.fetch_feed(url)
 
             if response is None:
-                return await ctx.send(_("That didn't seem to be a valid rss feed."))
+                return await ctx.send(
+                    _("That didn't seem to be a valid rss feed. (Syntax: {}{})").format(
+                        ctx.prefix, ctx.command.signature
+                    )
+                )
 
             else:
                 feeds.update(
@@ -319,8 +329,7 @@ class RSS(commands.Cog):
         self, ctx: commands.Context, channel: Optional[discord.TextChannel] = None
     ):
         """
-        Lists the current feeds (and their locations) 
-        for the current channel, or a provided one.
+        Lists the current feeds for the current channel, or a provided one.
         """
 
         channel = channel or ctx.channel
@@ -334,7 +343,7 @@ class RSS(commands.Cog):
                     for k, v in data.items()
                 ]
             )
-            for page in pagify(output, page_length=6000):
+            for page in pagify(output):
                 await ctx.send(
                     embed=discord.Embed(
                         description=page, color=(await ctx.embed_color())
@@ -408,6 +417,7 @@ class RSS(commands.Cog):
 
         $author
         $author_detail
+        $description
         $comments
         $content
         $contributors

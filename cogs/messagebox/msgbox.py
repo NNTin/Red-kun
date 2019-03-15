@@ -1,15 +1,17 @@
 import io
 import sys
-import discord
 from copy import copy
-from typing import Any
-from redbot.core.config import Config
+
+import discord
 from redbot.core import checks
 from redbot.core import commands
+from redbot.core.config import Config
 from redbot.core.i18n import Translator, cog_i18n
 from redbot.core.utils.chat_formatting import pagify
 
 _ = Translator("MessageBox", __file__)
+
+_old_contact = None
 
 
 class MessageBoxError(Exception):
@@ -22,8 +24,7 @@ class MessageBox(commands.Cog):
     replace contact with something less obnoxious
     """
 
-    __author__ = "mikeshardmind(Sinbad)"
-    __version__ = "1.0.4"
+    __version__ = "2.0.0"
 
     def __init__(self, bot):
         self.bot = bot
@@ -33,11 +34,9 @@ class MessageBox(commands.Cog):
         self.config.register_global(output=None)
 
     def __unload(self):
+        global _old_contact
         if _old_contact:
-            try:
-                self.bot.remove_command("contact")
-            except:
-                pass
+            self.bot.remove_command("contact")
             self.bot.add_command(_old_contact)
 
     @checks.is_owner()

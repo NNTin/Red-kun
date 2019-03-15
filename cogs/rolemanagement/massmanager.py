@@ -1,19 +1,17 @@
-import io
 import csv
-import sys
+import io
 import logging
+from typing import Optional, cast, no_type_check, Set
 
 import discord
 from redbot.core import checks, commands
 
+from .abc import MixinMeta
 from .converters import (
     RoleSyntaxConverter,
     ComplexActionConverter,
     ComplexSearchConverter,
-    DynoSyntaxConverter,
 )
-
-from .abc import MixinMeta
 from .exceptions import RoleManagementException
 
 log = logging.getLogger("redbot.sinbadcogs.rolemanagement.massmanager")
@@ -24,12 +22,6 @@ class MassManagementMixin(MixinMeta):
     Mass role operations
     """
 
-    async def __before_invoke(self, ctx):  # ctx.guild.chunked is innaccurate.
-        guild = ctx.guild
-        if guild:
-            if any(m.joined_at is None for m in guild.members):
-                await ctx.bot.request_offline_members(guild)
-
     @commands.guild_only()
     @checks.admin_or_permissions(manage_roles=True)
     @commands.group(name="massrole", autohelp=True, aliases=["mrole"])
@@ -39,226 +31,101 @@ class MassManagementMixin(MixinMeta):
         """
         pass
 
-    # start dyno mode
-
-    @mrole.group(name="dynomode", autohelp=True)
-    async def drole(self, ctx: commands.Context):
-        """
-        Provides syntax similar to dyno bots for ease of transition
-        """
-        pass
-
-    @drole.command(name="bots")
-    async def drole_bots(self, ctx: commands.Context, *, roles: DynoSyntaxConverter):
-        """
-        adds/removes roles to all bots.
-
-        Roles should be comma seperated and preceded by a `+` or `-` indicating
-        to give or remove
-
-        You cannot add and remove the same role
-
-        Example Usage:
-
-        [p]massrole bots +RoleToGive, -RoleToRemove
-
-        """
-        give, remove = roles["+"], roles["-"]
-        apply = give + remove
-        if not await self.all_are_valid_roles(ctx, *apply):
-            return await ctx.send(
-                "Either you or I don't have the required permissions "
-                "or position in the hierarchy."
-            )
-
-        for member in ctx.guild.members:
-            if member.bot:
-                await self.update_roles_atomically(who=member, give=give, remove=remove)
-
-        await ctx.tick()
-
-    @drole.command(name="all")
-    async def drole_all(self, ctx: commands.Context, *, roles: DynoSyntaxConverter):
-        """
-        adds/removes roles to all users.
-
-        Roles should be comma seperated and preceded by a `+` or `-` indicating
-        to give or remove
-
-        You cannot add and remove the same role
-
-        Example Usage:
-
-        [p]massrole all +RoleToGive, -RoleToRemove
-        """
-
-        give, remove = roles["+"], roles["-"]
-        apply = give + remove
-        if not await self.all_are_valid_roles(ctx, *apply):
-            return await ctx.send(
-                "Either you or I don't have the required permissions "
-                "or position in the hierarchy."
-            )
-
-        for member in ctx.guild.members:
-            await self.update_roles_atomically(
-                who=member, give=roles["+"], remove=roles["-"]
-            )
-
-        await ctx.tick()
-
-    @drole.command(name="humans")
-    async def drole_humans(self, ctx: commands.Context, *, roles: DynoSyntaxConverter):
-        """
-        adds/removes roles to all humans.
-
-        Roles should be comma seperated and preceded by a `+` or `-` indicating
-        to give or remove
-
-        You cannot add and remove the same role
-
-        Example Usage:
-
-        [p]massrole humans +RoleToGive, -RoleToRemove
-
-        """
-        give, remove = roles["+"], roles["-"]
-        apply = give + remove
-        if not await self.all_are_valid_roles(ctx, *apply):
-            return await ctx.send(
-                "Either you or I don't have the required permissions "
-                "or position in the hierarchy."
-            )
-
-        for member in ctx.guild.members:
-            if not member.bot:
-                await self.update_roles_atomically(
-                    who=member, give=roles["+"], remove=roles["-"]
-                )
-
-        await ctx.tick()
-
-    @drole.command(name="user")
-    async def drole_user(
-        self, ctx: commands.Context, user: discord.Member, *, roles: DynoSyntaxConverter
-    ):
-        """
-        adds/removes roles to a user
-
-        Roles should be comma seperated and preceded by a `+` or `-` indicating
-        to give or remove
-
-        You cannot add and remove the same role
-
-        Example Usage:
-
-        [p]massrole user Sinbad +RoleToGive, -RoleToRemove
-
-        """
-        give, remove = roles["+"], roles["-"]
-        apply = give + remove
-        if not await self.all_are_valid_roles(ctx, *apply):
-            return await ctx.send(
-                "Either you or I don't have the required permissions "
-                "or position in the hierarchy."
-            )
-
-        await self.update_roles_atomically(who=user, give=roles["+"], remove=roles["-"])
-
-        await ctx.tick()
-
-    @drole.command(name="in")
-    async def drole_user_in(
-        self, ctx: commands.Context, role: discord.Role, *, roles: DynoSyntaxConverter
-    ):
-        """
-        adds/removes roles to all users with a specified role
-
-        Roles should be comma seperated and preceded by a `+` or `-` indicating
-        to give or remove
-
-        You cannot add and remove the same role
-
-        Example Usage:
-
-        [p]massrole in "Red Team" +Champions, -Losers
-        """
-
-        give, remove = roles["+"], roles["-"]
-        apply = give + remove
-        if not await self.all_are_valid_roles(ctx, *apply):
-            return await ctx.send(
-                "Either you or I don't have the required permissions "
-                "or position in the hierarchy."
-            )
-
-        for member in role.members:
-            await self.update_roles_atomically(
-                who=member, give=roles["+"], remove=roles["-"]
-            )
-
-        await ctx.tick()
-
-    # end dyno transitional stuff
-
-    def search_filter(self, members: set, query: dict) -> set:
+    @staticmethod
+    def search_filter(members: set, query: dict) -> set:
         """
         Reusable
         """
 
-        if not query["everyone"]:
+        if query["everyone"]:
+            return members
 
-            if query["bots"]:
-                members = {m for m in members if m.bot}
-            elif query["humans"]:
-                members = {m for m in members if not m.bot}
+        all_set: Set[discord.Member] = set()
+        if query["all"]:
+            first, *rest = query["all"]
+            all_set = set(first.members)
+            for other_role in rest:
+                all_set &= set(other_role.members)
 
-            for role in query["all"]:
-                members &= set(role.members)
+        none_set: Set[discord.Member] = set()
+        if query["none"]:
             for role in query["none"]:
-                members -= set(role.members)
+                none_set.update(role.members)
 
-            if query["any"]:
-                any_union: set = set()
-                for role in query["any"]:
-                    any_union |= set(role.members)
-                members &= any_union
+        any_set: Set[discord.Member] = set()
+        if query["any"]:
+            for role in query["any"]:
+                any_set.update(role.members)
 
-            if query["hasperm"]:
-                perms = discord.Permissions()
-                perms.update(**{x: True for x in query["hasperm"]})
-                members = {m for m in members if m.guild_permissions >= perms}
+        minimum_perms: Optional[discord.Permissions] = None
+        if query["hasperm"]:
+            minimum_perms = discord.Permissions()
+            minimum_perms.update(**{x: True for x in query["hasperm"]})
 
-            if query["anyperm"]:
+        def mfilter(m: discord.Member) -> bool:
+            if query["bots"] and not m.bot:
+                return False
+            elif query["humans"] and m.bot:
+                return False
 
-                def has_any(mem):
-                    for perm, value in iter(mem.guild_permissions):
-                        if value and perm in query["anyperm"]:
-                            return True
-                    return False
+            if query["any"] and m not in any_set:
+                return False
 
-                members = {m for m in members if has_any(m)}
+            if query["all"] and m not in all_set:
+                return False
 
-            if query["notperm"]:
+            if query["none"] and m in none_set:
+                return False
 
-                def has_none(mem):
-                    for perm, value in iter(mem.guild_permissions):
-                        if value and perm in query["notperm"]:
-                            return False
-                    return True
+            if query["hasperm"] and m.guild_permissions < minimum_perms:
+                return False
 
-                members = {m for m in members if has_none(m)}
+            if query["anyperm"] and not any(
+                bool(value and perm in query["anyperm"])
+                for perm, value in iter(m.guild_permissions)
+            ):
+                return False
+
+            if query["notperm"] and any(
+                bool(value and perm in query["notperm"])
+                for perm, value in iter(m.guild_permissions)
+            ):
+                return False
+
+            if query["noroles"] and len(m.roles) == 1:
+                return False
+
+            # 0 is a valid option for these, everyone role not counted
+            if query["quantity"] is not None and len(m.roles) - 1 != query["quantity"]:
+                return False
+
+            if query["lt"] is not None and len(m.roles) - 1 >= query["lt"]:
+                return False
+
+            if query["gt"] is not None and len(m.roles) - 1 <= query["gt"]:
+                return False
+
+            if query["above"] and m.top_role <= query["above"]:
+                return False
+
+            if query["below"] and m.top_role >= query["below"]:
+                return False
+
+            return True
+
+        members = {m for m in members if mfilter(m)}
 
         return members
 
     @mrole.command(name="user")
+    @no_type_check
     async def mrole_user(
         self,
         ctx: commands.Context,
         users: commands.Greedy[discord.Member],
         *,
         roles: RoleSyntaxConverter,
-    ):
+    ):  # type: (commands.Context, List[discord.Member], *, dict) -> None
         """
         adds/removes roles to one or more users
 
@@ -288,6 +155,7 @@ class MassManagementMixin(MixinMeta):
         await ctx.tick()
 
     @mrole.command(name="search")
+    @no_type_check
     async def mrole_search(
         self, ctx: commands.Context, *, query: ComplexSearchConverter
     ):
@@ -297,17 +165,30 @@ class MassManagementMixin(MixinMeta):
         --has-all roles
         --has-none roles
         --has-any roles
+
+        --has-no-roles
+        --has-exactly-nroles number
+        --has-more-than-nroles number
+        --has-less-than-nroles number
+
         --has-perm permissions
         --any-perm permissions
         --not-perm permissions
+
+        --above role
+        --below role
+
         --only-humans
         --only-bots
+        --everyone
+
         --csv
 
         csv output will be used if output would exceed embed limits, or if flag is provided
         """
 
         members = set(ctx.guild.members)
+        query = cast(dict, query)
         members = self.search_filter(members, query)
 
         if len(members) < 50 and not query["csv"]:
@@ -357,7 +238,9 @@ class MassManagementMixin(MixinMeta):
                         "ID": member.id,
                         "Display Name": member.display_name,
                         "Username#Discrim": str(member),
-                        "Joined Server": member.joined_at.strftime(fmt),
+                        "Joined Server": member.joined_at.strftime(fmt)
+                        if member.joined_at
+                        else None,
                         "Joined Discord": member.created_at.strftime(fmt),
                     }
                 )
@@ -389,14 +272,25 @@ class MassManagementMixin(MixinMeta):
         --has-all roles
         --has-none roles
         --has-any roles
+
+        --has-no-roles
+        --has-exactly-nroles number
+        --has-more-than-nroles number
+        --has-less-than-nroles number
+
         --has-perm permissions
         --any-perm permissions
         --not-perm permissions
-        --add roles
-        --remove roles
+
+        --above role
+        --below role
+
         --only-humans
         --only-bots
         --everyone
+        
+        --add roles
+        --remove roles
         """
 
         apply = query["add"] + query["remove"]
