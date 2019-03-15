@@ -1,0 +1,28 @@
+{
+    "author" : [
+        "TrustyJAID"
+    ],
+    "bot_version" : [
+        3,
+        0,
+        0
+    ],
+    "description" : "Get information from gab.ai's API and display in discord.",
+    "disabled" : false,
+    "hidden" : false,
+    "install_msg" : "Thanks for installing, remember to set your gab API credentials with `[p]gab token` and follow the instructions.",
+    "min_python_version" : [
+        3,
+        6,
+        2
+    ],
+    "name" : "Gabai",
+    "permissions" : [],
+    "required_cogs" : [],
+    "requirements" : [],
+    "short" : "Gab.ai information",
+    "tags" : [
+        "gab"
+    ],
+    "type" : "COG"
+}

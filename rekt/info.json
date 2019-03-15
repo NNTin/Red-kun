@@ -1,0 +1,30 @@
+{
+    "author" : [
+        "TrustyJAID"
+    ],
+    "bot_version" : [
+        3,
+        0,
+        0
+    ],
+    "description" : "Are you REKT?",
+    "disabled" : false,
+    "hidden" : false,
+    "install_msg" : "Are you REKT?",
+    "min_python_version" : [
+        3,
+        6,
+        2
+    ],
+    "name" : "rekt",
+    "permissions" : [
+        "embed_links"
+    ],
+    "required_cogs" : [],
+    "requirements" : [],
+    "short" : "REKT",
+    "tags" : [
+        "rekt"
+    ],
+    "type" : "COG"
+}

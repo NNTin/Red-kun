@@ -1,0 +1,28 @@
+{
+    "author" : [
+        "TrustyJAID"
+    ],
+    "bot_version" : [
+        3,
+        0,
+        0
+    ],
+    "description" : "Lets you control your philips hue lights with redbot.",
+    "disabled" : false,
+    "hidden" : false,
+    "install_msg" : "Type `[p]hue` to see available commands.",
+    "min_python_version" : [
+        3,
+        6,
+        2
+    ],
+    "name" : "Hue",
+    "permissions" : [],
+    "required_cogs" : [],
+    "requirements" : [
+        "phue"
+    ],
+    "short" : "Control your philips hue lights with redbot!",
+    "tags" : [],
+    "type" : "COG"
+}

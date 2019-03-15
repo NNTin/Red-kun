@@ -1,0 +1,30 @@
+{
+    "author" : [
+        "TrustyJAID"
+    ],
+    "bot_version" : [
+        3,
+        0,
+        0
+    ],
+    "description" : "Gathers information from the Halo API and posts it on discord.",
+    "disabled" : false,
+    "hidden" : false,
+    "install_msg" : "Set your API key from https://developer.haloapi.com and access different stats from Halo 5 and Halo Wars 2.",
+    "min_python_version" : [
+        3,
+        6,
+        2
+    ],
+    "name" : "Halo",
+    "permissions" : [
+        "embed_links"
+    ],
+    "required_cogs" : [],
+    "requirements" : [],
+    "short" : "halo",
+    "tags" : [
+        "halo"
+    ],
+    "type" : "COG"
+}

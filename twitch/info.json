@@ -1,0 +1,32 @@
+{
+    "author" : [
+        "TrustyJAID"
+    ],
+    "bot_version" : [
+        3,
+        0,
+        0
+    ],
+    "description" : "Get notified of new twitch followers and get basic profile info.",
+    "disabled" : false,
+    "hidden" : false,
+    "install_msg" : "Setup a channel for new twitch follower notifications!",
+    "min_python_version" : [
+        3,
+        6,
+        2
+    ],
+    "name" : "Twitch",
+    "permissions" : [
+        "embed_links"
+    ],
+    "required_cogs" : [],
+    "requirements" : [],
+    "short" : "Get basic twitch account information.",
+    "tags" : [
+        "twitch",
+        "streaming",
+        "utility"
+    ],
+    "type" : "COG"
+}

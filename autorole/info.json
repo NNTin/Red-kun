@@ -1,0 +1,29 @@
+{
+    "author" : [
+        "Lunar Dust",
+        "TrustyJAID"
+    ],
+    "bot_version" : [
+        3,
+        0,
+        0
+    ],
+    "description" : "Automatically apply a role to new users",
+    "disabled" : false,
+    "hidden" : false,
+    "install_msg" : "autorole",
+    "min_python_version" : [
+        3,
+        6,
+        2
+    ],
+    "name" : "autorole",
+    "permissions" : [
+        "manage_roles"
+    ],
+    "required_cogs" : [],
+    "requirements" : [],
+    "short" : "Automatically apply a role to new users",
+    "tags" : [],
+    "type" : "COG"
+}

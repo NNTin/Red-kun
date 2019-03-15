@@ -1,0 +1,31 @@
+{
+    "author" : [
+        "TrustyJAID"
+    ],
+    "bot_version" : [
+        3,
+        0,
+        0
+    ],
+    "description" : "Get your Tarot reading done!",
+    "disabled" : false,
+    "hidden" : false,
+    "install_msg" : "Usage: `[p]tarot life` `[p]tarot reading` `[p]tarot card`",
+    "min_python_version" : [
+        3,
+        6,
+        2
+    ],
+    "name" : "Tarot",
+    "permissions" : [
+        "embed_links"
+    ],
+    "required_cogs" : [],
+    "requirements" : [],
+    "short" : "General commands",
+    "tags" : [
+        "fun",
+        "mystery"
+    ],
+    "type" : "COG"
+}
