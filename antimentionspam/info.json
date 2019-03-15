@@ -1,15 +1,11 @@
 {
-    "author": ["mikeshardmind(Sinbad)"],
-    "install_msg": "This is an initial bare bones port of the v2 cog, more to come on this.",
+    "author": ["mikeshardmind(Sinbad)", "DiscordLiz"],
+    "install_msg": "If you need help, I have a channel in https://discord.gg/mb85deu",
     "name": "AntiMentionSpam",
     "disabled": false,
     "short": "filters mass mentions",
     "description": "mass mention filter",
     "tags": [],
     "hidden": false,
-    "min_python_version": [
-        3,
-        6,
-        0
-    ]
+    "min_python_version": [3, 6, 0]
 }

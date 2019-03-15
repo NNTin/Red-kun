@@ -62,11 +62,10 @@ class UtilMixin(MixinMeta):
         Returns a list of roles to be removed if this one is added, or raises an
         exception
         """
-        ret: List[discord.Role] = []
 
         await self.check_required(who, role)
 
-        ret = await self.check_exclusivity(who, role)
+        ret: List[discord.Role] = await self.check_exclusivity(who, role)
 
         forbidden = await self.config.member(who).forbidden()
         if role.id in forbidden:
@@ -83,12 +82,11 @@ class UtilMixin(MixinMeta):
         Raises an error on missing reqs
         """
 
-        req_any_fail: list = []
-        req_all_fail: list = []
-
         async with self.config.role(role).requires_any() as req_any:
             if req_any and not any(r.id in req_any for r in who.roles):
                 req_any_fail = req_any
+            else:
+                req_any_fail = []
 
         async with self.config.role(role).requires_all() as req_all:
             req_all_fail = list(set(req_all) - set(who.roles))
@@ -106,14 +104,17 @@ class UtilMixin(MixinMeta):
         """
         Returns a list of roles to remove, or raises an error
         """
-        ret: List[discord.Role] = []
 
-        async with self.config.role(role).exclusive_to() as ex:
-            if any(r.id in ex for r in who.roles):
-                conflicts = [r for r in who.roles if r.id in ex]
-                if await self.config.role(role).toggle_on_exclusive():
-                    ret = conflicts
-                else:
-                    raise ConflictingRoleException(conflicts=conflicts)
+        data = await self.config.all_roles()
+        ex = data.get(role.id, {}).get("exclusive_to", [])
+        conflicts: List[discord.Role] = [r for r in who.roles if r.id in ex]
 
-        return ret
+        for r in conflicts:
+            if not data.get(r.id, {}).get("self_removable", False):
+                raise ConflictingRoleException(conflicts=conflicts)
+        return conflicts
+
+    async def maybe_update_guilds(self, *guilds: discord.Guild):
+        _guilds = [g for g in guilds if not g.unavailable and g.large and not g.chunked]
+        if _guilds:
+            await self.bot.request_offline_members(*_guilds)

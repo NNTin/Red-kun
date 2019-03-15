@@ -1,10 +1,10 @@
 {
-    "author": ["mikeshardmind(Sinbad)"],
+    "author": ["mikeshardmind(Sinbad)", "DiscordLiz"],
     "install_msg": "If you need help, I have a channel in https://discord.gg/mb85deu",
     "name": "EmbedMaker",
     "disabled": false,
     "short": "Embeds",
-    "description": "Highly featured embed creation",
+    "description": "Highly featured embed creation. Still needs a lot of UX improvement.",
     "tags": [
         "embed",
         "embedmaker"

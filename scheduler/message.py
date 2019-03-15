@@ -1,14 +1,14 @@
+from typing import List
 from datetime import datetime
-import logging
 import discord
-from redbot.core import commands
 import asyncio
-from collections.abc import Awaitable
+import re
+
+EVERYONE_REGEX = re.compile(r"@here|@everyone")
 
 
-class DummyAwaitable(Awaitable):
-    def __await__(self):
-        yield
+async def dummy_awaitable(*args, **kwargs):
+    return
 
 
 def neuter_coroutines(klass):
@@ -19,10 +19,31 @@ def neuter_coroutines(klass):
         if asyncio.iscoroutinefunction(_):
 
             def dummy(self):
-                return DummyAwaitable()
+                return dummy_awaitable
 
             prop = property(fget=dummy)
             setattr(klass, attr, prop)
+    return klass
+
+
+async def replacement_delete_messages(self, messages):
+    message_ids = list(
+        {m.id for m in messages if m.__class__.__name__ != "SchedulerMessage"}
+    )
+
+    if not message_ids:
+        return
+
+    if len(message_ids) == 1:
+        await self._state.http.delete_message(self.id, message_ids[0])
+        return
+
+    if len(message_ids) > 100:
+        raise discord.ClientException(
+            "Can only bulk delete messages up to 100 messages"
+        )
+
+    await self._state.http.delete_messages(self.id, message_ids)
 
 
 @neuter_coroutines
@@ -35,47 +56,40 @@ class SchedulerMessage(discord.Message):
     """
 
     def __init__(
-        self,
-        *,
-        content: str,
-        author: discord.User,
-        channel: discord.TextChannel,
-        guild: discord.Guild = None,
+        self, *, content: str, author: discord.User, channel: discord.TextChannel
     ) -> None:
+        # auto current time
         self.id = discord.utils.time_snowflake(datetime.utcnow())
+        # important properties for even being processed
         self.author = author
         self.channel = channel
+        self.content = content
+        self.guild = channel.guild
+        # this attribute being in almost everything (and needing to be) is a pain
+        self._state = self.guild._state
+        # sane values below, fresh messages which are commands should exhibit these.
         self.call = None
-        data = {
-            "mention_everyone": bool(
-                "@everyone" in content
-                and channel.permissions_for(author).mention_everyone
-            ),
-            "content": content,
-            "type": 0,
-        }
-        self._update(channel, data)
-
-    def _update(self, channel, data):
-        self.channel = channel
-        self._try_patch(data, "mention_everyone")
-        self._try_patch(
-            data, "type", lambda x: discord.enums.try_enum(discord.MessageType, x)
+        self.type = discord.MessageType(0)
+        self.tts = False
+        self.pinned = False
+        # suport for attachments somehow later maybe?
+        self.attachments: List[discord.Attachment] = []
+        # mentions
+        self.mention_everyone = self.channel.permissions_for(
+            self.author
+        ).mention_everyone and bool(EVERYONE_REGEX.match(self.content))
+        # pylint: disable=E1133
+        # pylint improperly detects the inherited properties here as not being iterable
+        # This should be fixed with typehint support added to upstream lib later
+        self.mentions = list(
+            filter(None, [self.guild.get_member(idx) for idx in self.raw_mentions])
         )
-        self._try_patch(data, "content")
-        self._try_patch(data, "attachments", lambda x: [])
-        self._try_patch(data, "embeds", lambda x: [])
-
-        for handler in ("author", "mentions", "mention_roles"):
-            try:
-                getattr(self, "_handle_%s" % handler)(data[handler])
-            except KeyError:
-                continue
-
-        # clear the cached properties
-        cached = filter(lambda attr: attr.startswith("_cs_"), self.__slots__)
-        for attr in cached:
-            try:
-                delattr(self, attr)
-            except AttributeError:
-                pass
+        self.channel_mentions = list(
+            filter(
+                None, [self.guild.get_channel(idx) for idx in self.raw_channel_mentions]
+            )
+        )
+        self.role_mentions = list(
+            filter(None, [self.guild.get_role(idx) for idx in self.raw_role_mentions])
+        )
+        # pylint: enable=E1133

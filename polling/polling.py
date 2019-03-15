@@ -1,10 +1,7 @@
-import asyncio
-from typing import Any
-import discord
 from datetime import datetime as dt, timedelta as td
 
-from redbot.core import commands, checks
-from redbot.core.bot import Red
+import discord
+from redbot.core import commands
 
 
 class Polling(commands.Cog):
@@ -12,8 +9,7 @@ class Polling(commands.Cog):
     A Polling cog
     """
 
-    __author__ = "mikeshardmind(Sinbad)"
-    __version__ = "1.0.4"
+    __version__ = "2.0.0"
 
     @commands.command()
     async def votecount(
@@ -83,7 +79,8 @@ class Polling(commands.Cog):
 
         await self.send_dict(ctx, valid_votes)
 
-    async def send_dict(self, ctx, some_dict: dict):
+    @staticmethod
+    async def send_dict(ctx, some_dict: dict):
 
         msg = "Vote results:"
 

@@ -6,7 +6,7 @@
 import discord
 from datetime import datetime as dt
 
-template = {
+template: dict = {
     "initable": {
         "description": None,
         "color": None,
@@ -26,7 +26,7 @@ template = {
 
 def serialize_embed(embed: discord.Embed) -> dict:
 
-    ret = {"initable": {}, "settable": {}}
+    ret: dict = {"initable": {}, "settable": {}}
 
     for k in template["initable"].keys():
         v = getattr(embed, k, None) or None
@@ -44,8 +44,8 @@ def serialize_embed(embed: discord.Embed) -> dict:
             continue
         ret["settable"][k] = {}
         for attr in v.keys():
-            to_set = getattr(proxy, attr, None) or None
-            if to_set:
+            to_set = getattr(proxy, attr, None)
+            if to_set or to_set is False:  # specifically not None or embed.Empty
                 ret["settable"][k][attr] = to_set
 
     ret["fields"] = []
@@ -53,7 +53,8 @@ def serialize_embed(embed: discord.Embed) -> dict:
         data = {}
         for attr in ["name", "value", "inline"]:
             to_set = getattr(field, attr, None)
-            data[attr] = to_set
+            if to_set or to_set is False:  # specifically not None or embed.Empty
+                data[attr] = to_set
         if data:
             ret["fields"].append(data)
 
@@ -75,7 +76,6 @@ def deserialize_embed(conf: dict) -> discord.Embed:
             getattr(e, "set_" + k)(**to_set)
 
     for f in conf["fields"]:
-        to_set = {_k: _v for _k, _v in f.items() if _v}
-        e.add_field(**to_set)
+        e.add_field(**f)
 
     return e
