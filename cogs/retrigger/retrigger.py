@@ -1,6 +1,7 @@
 import discord
 import logging
 import asyncio
+import re
 
 from multiprocessing.pool import Pool
 from typing import Union, Optional
@@ -34,7 +35,7 @@ class ReTrigger(TriggerHandler, commands.Cog):
     """
 
     __author__ = "TrustyJAID"
-    __version__ = "2.4.5"
+    __version__ = "2.6.0"
 
     def __init__(self, bot):
         self.bot = bot
@@ -51,10 +52,36 @@ class ReTrigger(TriggerHandler, commands.Cog):
         }
         self.config.register_guild(**default_guild)
         self.re_pool = Pool(maxtasksperchild=2)
+        self.triggers = {}
+        self.save_triggers = self.bot.loop.create_task(self.save_loop())
 
     def __unload(self):
         self.re_pool.close()
         self.bot.loop.run_in_executor(None, self.re_pool.join)
+        self.save_triggers.cancel()
+
+    async def initialize(self):
+        data = await self.config.all_guilds()
+        for guild, settings in data.items():
+            self.triggers[guild] = []
+            for trigger in settings["trigger_list"].values():
+                self.triggers[guild].append(await Trigger.from_json(trigger))
+
+    async def save_loop(self):
+        await self.bot.wait_until_ready()
+        while self is self.bot.get_cog("ReTrigger"):
+            for guild_id, triggers in self.triggers.items():
+                guild = self.bot.get_guild(guild_id)
+                if not guild:
+                    continue
+                async with self.config.guild(guild).trigger_list() as trigger_list:
+                    for trigger in triggers:
+                        try:
+                            trigger_list[trigger.name]["count"] = trigger.count
+                        except KeyError:
+                            continue
+                        await asyncio.sleep(0.1)
+            await asyncio.sleep(120)
 
     @commands.group()
     @commands.guild_only()
@@ -91,6 +118,18 @@ class ReTrigger(TriggerHandler, commands.Cog):
     async def _modlog(self, ctx: commands.Context):
         """
             Set which events to record in the modlog.
+        """
+        pass
+
+    @retrigger.group(name="edit")
+    @checks.mod_or_permissions(manage_channels=True)
+    async def _edit(self, ctx: commands.Context):
+        """
+            Edit various settings in a set trigger.
+
+            Note: Only the server owner, Bot owner, or original
+            author can edit a saved trigger. Multi triggers
+            cannot be edited.
         """
         pass
 
@@ -191,7 +230,7 @@ class ReTrigger(TriggerHandler, commands.Cog):
     @_modlog.command(name="channel")
     @checks.mod_or_permissions(manage_channels=True)
     async def modlog_channel(
-        self, ctx: commands.Context, channel: Union[discord.TextChannel, str]
+        self, ctx: commands.Context, channel: Union[discord.TextChannel, str, None]
     ):
         """
             Set the modlog channel for filtered words
@@ -203,9 +242,9 @@ class ReTrigger(TriggerHandler, commands.Cog):
         if isinstance(channel, discord.TextChannel):
             await self.config.guild(ctx.guild).modlog.set(channel.id)
         else:
-            if channel.lower() in ["none", "clear"]:
+            if channel in ["none", "clear"]:
                 channel = None
-            elif channel.lower() in ["default"]:
+            elif channel in ["default"]:
                 channel = "default"
             else:
                 await ctx.send(_('Channel "{channel}" not found.').format(channel=channel))
@@ -245,6 +284,8 @@ class ReTrigger(TriggerHandler, commands.Cog):
         trigger_list = await self.config.guild(ctx.guild).trigger_list()
         trigger.cooldown = cooldown
         trigger_list[trigger.name] = await trigger.to_json()
+        await self.remove_trigger_from_cache(ctx.guild, trigger)
+        self.triggers[ctx.guild.id].append(trigger)
         await self.config.guild(ctx.guild).trigger_list.set(trigger_list)
         await ctx.send(msg.format(time=time, style=style, name=trigger.name))
 
@@ -267,6 +308,8 @@ class ReTrigger(TriggerHandler, commands.Cog):
                 async with self.config.guild(ctx.guild).trigger_list() as trigger_list:
                     trigger.whitelist.append(obj.id)
                     trigger_list[trigger.name] = await trigger.to_json()
+        await self.remove_trigger_from_cache(ctx.guild, trigger)
+        self.triggers[ctx.guild.id].append(trigger)
         msg = _("Trigger {name} added `{list_type}` to its whitelist.")
         list_type = humanize_list([c.name for c in channel_user_role])
         await ctx.send(msg.format(list_type=list_type, name=trigger.name))
@@ -290,6 +333,8 @@ class ReTrigger(TriggerHandler, commands.Cog):
                 async with self.config.guild(ctx.guild).trigger_list() as trigger_list:
                     trigger.whitelist.remove(obj.id)
                     trigger_list[trigger.name] = await trigger.to_json()
+        await self.remove_trigger_from_cache(ctx.guild, trigger)
+        self.triggers[ctx.guild.id].append(trigger)
         msg = _("Trigger {name} removed `{list_type}` from its whitelist.")
         list_type = humanize_list([c.name for c in channel_user_role])
         await ctx.send(msg.format(list_type=list_type, name=trigger.name))
@@ -313,6 +358,8 @@ class ReTrigger(TriggerHandler, commands.Cog):
                 async with self.config.guild(ctx.guild).trigger_list() as trigger_list:
                     trigger.blacklist.append(obj.id)
                     trigger_list[trigger.name] = await trigger.to_json()
+        await self.remove_trigger_from_cache(ctx.guild, trigger)
+        self.triggers[ctx.guild.id].append(trigger)
         msg = _("Trigger {name} added `{list_type}` to its blacklist.")
         list_type = humanize_list([c.name for c in channel_user_role])
         await ctx.send(msg.format(list_type=list_type, name=trigger.name))
@@ -336,9 +383,148 @@ class ReTrigger(TriggerHandler, commands.Cog):
                 async with self.config.guild(ctx.guild).trigger_list() as trigger_list:
                     trigger.blacklist.remove(obj.id)
                     trigger_list[trigger.name] = await trigger.to_json()
+        await self.remove_trigger_from_cache(ctx.guild, trigger)
+        self.triggers[ctx.guild.id].append(trigger)
         msg = _("Trigger {name} removed `{list_type}` from its blacklist.")
         list_type = humanize_list([c.name for c in channel_user_role])
         await ctx.send(msg.format(list_type=list_type, name=trigger.name))
+
+    @_edit.command(name="regex")
+    @checks.mod_or_permissions(manage_messages=True)
+    async def edit_regex(
+        self, ctx: commands.Context, trigger: TriggerExists, *, regex: ValidRegex
+    ):
+        """
+            Edit the regex of a saved trigger.
+
+            `<trigger>` is the name of the trigger
+            `<regex>` The new regex pattern to use.
+        """
+        if type(trigger) is str:
+            return await ctx.send(_("Trigger `{name}` doesn't exist.").format(name=trigger))
+        if not await self.can_edit(ctx.author, trigger):
+            return await ctx.send(_("You are not authorized to edit this trigger."))
+        trigger.regex = re.compile(regex)
+        async with self.config.guild(ctx.guild).trigger_list() as trigger_list:
+            trigger_list[trigger.name] = await trigger.to_json()
+        await self.remove_trigger_from_cache(ctx.guild, trigger)
+        self.triggers[ctx.guild.id].append(trigger)
+        msg = _("Trigger {name} regex changed to ```bf\n{regex}\n```")
+        await ctx.send(msg.format(name=trigger.name, regex=regex))
+
+    @_edit.command(name="text", aliases=["msg"])
+    @checks.mod_or_permissions(manage_messages=True)
+    async def edit_text(
+        self, ctx: commands.Context, trigger: TriggerExists, *, text: str
+    ):
+        """
+            Edit the text of a saved trigger.
+
+            `<trigger>` is the name of the trigger
+            `<text>` The new regex pattern to use.
+        """
+        if type(trigger) is str:
+            return await ctx.send(_("Trigger `{name}` doesn't exist.").format(name=trigger))
+        if not await self.can_edit(ctx.author, trigger):
+            return await ctx.send(_("You are not authorized to edit this trigger."))
+        if "text" not in trigger.response_type:
+            return await ctx.send(_("That trigger cannot be edited this way."))
+        trigger.text = text
+        async with self.config.guild(ctx.guild).trigger_list() as trigger_list:
+            trigger_list[trigger.name] = await trigger.to_json()
+        await self.remove_trigger_from_cache(ctx.guild, trigger)
+        self.triggers[ctx.guild.id].append(trigger)
+        msg = _("Trigger {name} text changed to `{text}`")
+        await ctx.send(msg.format(name=trigger.name, text=text))
+
+    @_edit.command(name="command", aliases=["cmd"])
+    @checks.mod_or_permissions(manage_messages=True)
+    async def edit_command(
+        self, ctx: commands.Context, trigger: TriggerExists, *, command: str
+    ):
+        """
+            Edit the text of a saved trigger.
+
+            `<trigger>` is the name of the trigger.
+            `<command>` The new command for the trigger.
+        """
+        if type(trigger) is str:
+            return await ctx.send(_("Trigger `{name}` doesn't exist.").format(name=trigger))
+        if not await self.can_edit(ctx.author, trigger):
+            return await ctx.send(_("You are not authorized to edit this trigger."))
+        cmd_list = command.split(" ")
+        existing_cmd = self.bot.get_command(cmd_list[0])
+        if existing_cmd is None:
+            await ctx.send(command + _(" doesn't seem to be an available command."))
+            return
+        if "command" not in trigger.response_type:
+            return await ctx.send(_("That trigger cannot be edited this way."))
+        trigger.text = command
+        async with self.config.guild(ctx.guild).trigger_list() as trigger_list:
+            trigger_list[trigger.name] = await trigger.to_json()
+        await self.remove_trigger_from_cache(ctx.guild, trigger)
+        self.triggers[ctx.guild.id].append(trigger)
+        msg = _("Trigger {name} command changed to `{command}`")
+        await ctx.send(msg.format(name=trigger.name, command=command))
+
+    @_edit.command(name="role", aliases=["roles"])
+    @checks.mod_or_permissions(manage_roles=True)
+    async def edit_roles(
+        self, ctx: commands.Context, trigger: TriggerExists, *roles: discord.Role
+    ):
+        """
+            Edit the added or removed roles of a saved trigger.
+
+            `<trigger>` is the name of the trigger.
+            `<roles>` space separated list of roles or ID's to edit on the trigger.
+        """
+        if type(trigger) is str:
+            return await ctx.send(_("Trigger `{name}` doesn't exist.").format(name=trigger))
+        if not await self.can_edit(ctx.author, trigger):
+            return await ctx.send(_("You are not authorized to edit this trigger."))
+        for role in roles:
+            if role >= ctx.me.top_role:
+                return await ctx.send(_("I can't assign roles higher than my own."))
+            if role >= ctx.author.top_role:
+                return await ctx.send(
+                    _("I can't assign roles higher than you are able to assign.")
+                )
+        role_ids = [r.id for r in roles]
+        if not any([t for t in trigger.response_type if t in ["add_role", "remove_role"]]):
+            return await ctx.send(_("That trigger cannot be edited this way."))
+        trigger.text = role_ids
+        async with self.config.guild(ctx.guild).trigger_list() as trigger_list:
+            trigger_list[trigger.name] = await trigger.to_json()
+        await self.remove_trigger_from_cache(ctx.guild, trigger)
+        self.triggers[ctx.guild.id].append(trigger)
+        msg = _("Trigger {name} role edits changed to `{roles}`")
+        await ctx.send(msg.format(name=trigger.name, roles=humanize_list([r.name for r in roles])))
+
+    @_edit.command(name="react", aliases=["emojis"])
+    @checks.mod_or_permissions(manage_messages=True)
+    async def edit_reactions(
+        self, ctx: commands.Context, trigger: TriggerExists, *emojis: ValidEmoji
+    ):
+        """
+            Edit the emoji reactions of a saved trigger.
+
+            `<trigger>` is the name of the trigger.
+            `<emojis>` The new emojis to be used in the trigger.
+        """
+        if type(trigger) is str:
+            return await ctx.send(_("Trigger `{name}` doesn't exist.").format(name=trigger))
+        if not await self.can_edit(ctx.author, trigger):
+            return await ctx.send(_("You are not authorized to edit this trigger."))
+        if "react" not in trigger.response_type:
+            return await ctx.send(_("That trigger cannot be edited this way."))
+        trigger.text = emojis
+        async with self.config.guild(ctx.guild).trigger_list() as trigger_list:
+            trigger_list[trigger.name] = await trigger.to_json()
+        await self.remove_trigger_from_cache(ctx.guild, trigger)
+        self.triggers[ctx.guild.id].append(trigger)
+        msg = _("Trigger {name} reactions changed to {emojis}")
+        emoji_s = [f"<{e}>" for e in emojis if len(e) > 5] + [e for e in emojis if len(e) < 5]
+        await ctx.send(msg.format(name=trigger.name, emojis=humanize_list(emoji_s)))
 
     @retrigger.command()
     async def list(self, ctx: commands.Context, trigger: TriggerExists = None):
@@ -372,6 +558,7 @@ class ReTrigger(TriggerHandler, commands.Cog):
         """
         if type(trigger) is Trigger:
             await self.remove_trigger(ctx.guild, trigger.name)
+            await self.remove_trigger_from_cache(ctx.guild, trigger)
             await ctx.send(_("Trigger `") + trigger.name + _("` removed."))
         else:
             await ctx.send(_("Trigger `") + trigger + _("` doesn't exist."))
@@ -400,7 +587,10 @@ class ReTrigger(TriggerHandler, commands.Cog):
             return await ctx.send(msg)
         guild = ctx.guild
         author = ctx.message.author.id
-        new_trigger = Trigger(name, regex, ["text"], author, 0, None, text, [], [], {}, [])
+        new_trigger = Trigger(
+            name, regex, ["text"], author, 0, None, text, [], [], {}, [], ctx.message.id
+        )
+        self.triggers[ctx.guild.id].append(new_trigger)
         trigger_list = await self.config.guild(guild).trigger_list()
         trigger_list[name] = await new_trigger.to_json()
         await self.config.guild(guild).trigger_list.set(trigger_list)
@@ -427,7 +617,10 @@ class ReTrigger(TriggerHandler, commands.Cog):
             return
         guild = ctx.guild
         author = ctx.message.author.id
-        new_trigger = Trigger(name, regex, ["randtext"], author, 0, None, text, [], [], {}, [])
+        new_trigger = Trigger(
+            name, regex, ["randtext"], author, 0, None, text, [], [], {}, [], ctx.message.id
+        )
+        self.triggers[ctx.guild.id].append(new_trigger)
         trigger_list = await self.config.guild(guild).trigger_list()
         trigger_list[name] = await new_trigger.to_json()
         await self.config.guild(guild).trigger_list.set(trigger_list)
@@ -457,7 +650,10 @@ class ReTrigger(TriggerHandler, commands.Cog):
             return await ctx.send(msg)
         guild = ctx.guild
         author = ctx.message.author.id
-        new_trigger = Trigger(name, regex, ["dm"], author, 0, None, text, [], [], {}, [])
+        new_trigger = Trigger(
+            name, regex, ["dm"], author, 0, None, text, [], [], {}, [], ctx.message.id
+        )
+        self.triggers[ctx.guild.id].append(new_trigger)
         trigger_list = await self.config.guild(guild).trigger_list()
         trigger_list[name] = await new_trigger.to_json()
         await self.config.guild(guild).trigger_list.set(trigger_list)
@@ -496,7 +692,10 @@ class ReTrigger(TriggerHandler, commands.Cog):
             image_url = msg.attachments[0].url
             filename = await self.save_image_location(image_url, guild)
 
-        new_trigger = Trigger(name, regex, ["image"], author, 0, filename, None, [], [], {}, [])
+        new_trigger = Trigger(
+            name, regex, ["image"], author, 0, filename, None, [], [], {}, [], ctx.message.id
+        )
+        self.triggers[ctx.guild.id].append(new_trigger)
         trigger_list = await self.config.guild(guild).trigger_list()
         trigger_list[name] = await new_trigger.to_json()
         await self.config.guild(guild).trigger_list.set(trigger_list)
@@ -525,6 +724,7 @@ class ReTrigger(TriggerHandler, commands.Cog):
         new_trigger = Trigger(
             name, regex, ["randimage"], author, 0, filename, None, [], [], {}, []
         )
+        self.triggers[ctx.guild.id].append(new_trigger)
         trigger_list = await self.config.guild(guild).trigger_list()
         trigger_list[name] = await new_trigger.to_json()
         await self.config.guild(guild).trigger_list.set(trigger_list)
@@ -573,7 +773,10 @@ class ReTrigger(TriggerHandler, commands.Cog):
             image_url = msg.attachments[0].url
             filename = await self.save_image_location(image_url, guild)
 
-        new_trigger = Trigger(name, regex, ["image"], author, 0, filename, text, [], [], {}, [])
+        new_trigger = Trigger(
+            name, regex, ["image"], author, 0, filename, text, [], [], {}, [], ctx.message.id
+        )
+        self.triggers[ctx.guild.id].append(new_trigger)
         trigger_list = await self.config.guild(guild).trigger_list()
         trigger_list[name] = await new_trigger.to_json()
         await self.config.guild(guild).trigger_list.set(trigger_list)
@@ -615,7 +818,10 @@ class ReTrigger(TriggerHandler, commands.Cog):
             image_url = msg.attachments[0].url
             filename = await self.save_image_location(image_url, guild)
 
-        new_trigger = Trigger(name, regex, ["resize"], author, 0, filename, None, [], [], {}, [])
+        new_trigger = Trigger(
+            name, regex, ["resize"], author, 0, filename, None, [], [], {}, [], ctx.message.id
+        )
+        self.triggers[ctx.guild.id].append(new_trigger)
         trigger_list = await self.config.guild(guild).trigger_list()
         trigger_list[name] = await new_trigger.to_json()
         await self.config.guild(guild).trigger_list.set(trigger_list)
@@ -641,7 +847,10 @@ class ReTrigger(TriggerHandler, commands.Cog):
             return await ctx.send(msg)
         guild = ctx.guild
         author = ctx.message.author.id
-        new_trigger = Trigger(name, regex, ["ban"], author, 0, None, None, [], [], {}, [])
+        new_trigger = Trigger(
+            name, regex, ["ban"], author, 0, None, None, [], [], {}, [], ctx.message.id
+        )
+        self.triggers[ctx.guild.id].append(new_trigger)
         trigger_list = await self.config.guild(guild).trigger_list()
         trigger_list[name] = await new_trigger.to_json()
         await self.config.guild(guild).trigger_list.set(trigger_list)
@@ -667,7 +876,10 @@ class ReTrigger(TriggerHandler, commands.Cog):
             return await ctx.send(msg)
         guild = ctx.guild
         author = ctx.message.author.id
-        new_trigger = Trigger(name, regex, ["kick"], author, 0, None, None, [], [], {}, [])
+        new_trigger = Trigger(
+            name, regex, ["kick"], author, 0, None, None, [], [], {}, [], ctx.message.id
+        )
+        self.triggers[ctx.guild.id].append(new_trigger)
         trigger_list = await self.config.guild(guild).trigger_list()
         trigger_list[name] = await new_trigger.to_json()
         await self.config.guild(guild).trigger_list.set(trigger_list)
@@ -694,7 +906,10 @@ class ReTrigger(TriggerHandler, commands.Cog):
             return await ctx.send(msg)
         guild = ctx.guild
         author = ctx.message.author.id
-        new_trigger = Trigger(name, regex, ["react"], author, 0, None, emojis, [], [], {}, [])
+        new_trigger = Trigger(
+            name, regex, ["react"], author, 0, None, emojis, [], [], {}, [], ctx.message.id
+        )
+        self.triggers[ctx.guild.id].append(new_trigger)
         trigger_list = await self.config.guild(guild).trigger_list()
         trigger_list[name] = await new_trigger.to_json()
         await self.config.guild(guild).trigger_list.set(trigger_list)
@@ -725,7 +940,10 @@ class ReTrigger(TriggerHandler, commands.Cog):
             return
         guild = ctx.guild
         author = ctx.message.author.id
-        new_trigger = Trigger(name, regex, ["command"], author, 0, None, command, [], [], {}, [])
+        new_trigger = Trigger(
+            name, regex, ["command"], author, 0, None, command, [], [], {}, [], ctx.message.id
+        )
+        self.triggers[ctx.guild.id].append(new_trigger)
         trigger_list = await self.config.guild(guild).trigger_list()
         trigger_list[name] = await new_trigger.to_json()
         await self.config.guild(guild).trigger_list.set(trigger_list)
@@ -769,7 +987,10 @@ class ReTrigger(TriggerHandler, commands.Cog):
             return
         guild = ctx.guild
         author = ctx.message.author.id
-        new_trigger = Trigger(name, regex, ["mock"], author, 0, None, command, [], [], {}, [])
+        new_trigger = Trigger(
+            name, regex, ["mock"], author, 0, None, command, [], [], {}, [], ctx.message.id
+        )
+        self.triggers[ctx.guild.id].append(new_trigger)
         trigger_list = await self.config.guild(guild).trigger_list()
         trigger_list[name] = await new_trigger.to_json()
         await self.config.guild(guild).trigger_list.set(trigger_list)
@@ -801,8 +1022,20 @@ class ReTrigger(TriggerHandler, commands.Cog):
         guild = ctx.guild
         author = ctx.message.author.id
         new_trigger = Trigger(
-            name, regex, ["delete"], author, 0, None, check_filenames, [], [], {}, []
+            name,
+            regex,
+            ["delete"],
+            author,
+            0,
+            None,
+            check_filenames,
+            [],
+            [],
+            {},
+            [],
+            ctx.message.id,
         )
+        self.triggers[ctx.guild.id].append(new_trigger)
         trigger_list = await self.config.guild(guild).trigger_list()
         trigger_list[name] = await new_trigger.to_json()
         await self.config.guild(guild).trigger_list.set(trigger_list)
@@ -837,7 +1070,10 @@ class ReTrigger(TriggerHandler, commands.Cog):
         role_ids = [r.id for r in roles]
         guild = ctx.guild
         author = ctx.message.author.id
-        new_trigger = Trigger(name, regex, ["add_role"], author, 0, None, role_ids, [], [], {}, [])
+        new_trigger = Trigger(
+            name, regex, ["add_role"], author, 0, None, role_ids, [], [], {}, [], ctx.message.id
+        )
+        self.triggers[ctx.guild.id].append(new_trigger)
         trigger_list = await self.config.guild(guild).trigger_list()
         trigger_list[name] = await new_trigger.to_json()
         await self.config.guild(guild).trigger_list.set(trigger_list)
@@ -873,8 +1109,9 @@ class ReTrigger(TriggerHandler, commands.Cog):
         guild = ctx.guild
         author = ctx.message.author.id
         new_trigger = Trigger(
-            name, regex, ["remove_role"], author, 0, None, role_ids, [], [], {}, []
+            name, regex, ["remove_role"], author, 0, None, role_ids, [], [], {}, [], ctx.message.id
         )
+        self.triggers[ctx.guild.id].append(new_trigger)
         trigger_list = await self.config.guild(guild).trigger_list()
         trigger_list[name] = await new_trigger.to_json()
         await self.config.guild(guild).trigger_list.set(trigger_list)
@@ -903,7 +1140,7 @@ class ReTrigger(TriggerHandler, commands.Cog):
             e.g. `[p]retrigger multi test \\btest\\b \"dm;You said a bad word!\" filter`
             Will attempt to DM the user and delete their message simultaneously.
         """
-        # log.debug(multi_response)
+        # log.info(multi_response)
         # return
         if type(name) != str:
             msg = _("{name} is already a trigger name").format(name=name.name)
@@ -922,7 +1159,9 @@ class ReTrigger(TriggerHandler, commands.Cog):
             [],
             {},
             multi_response,
+            ctx.message.id,
         )
+        self.triggers[ctx.guild.id].append(new_trigger)
         trigger_list = await self.config.guild(guild).trigger_list()
         trigger_list[name] = await new_trigger.to_json()
         await self.config.guild(guild).trigger_list.set(trigger_list)

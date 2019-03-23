@@ -11,7 +11,7 @@ import re
 from io import BytesIO
 from copy import copy
 from datetime import datetime
-from typing import List, Union, Pattern
+from typing import List, Union, Pattern, cast, Dict
 
 from redbot.core.bot import Red
 from redbot.core import commands, Config, modlog
@@ -48,13 +48,38 @@ class TriggerHandler:
     config: Config
     bot: Red
     re_pool: Pool
+    triggers: Dict[int, List[Trigger]]
     ALLOW_RESIZE: bool = ALLOW_RESIZE
 
     def __init__(self, *args):
         self.config: Config
         self.bot: Red
         self.re_pool: Pool
+        self.triggers: Dict[int, List[Trigger]]
         self.ALLOW_RESIZE = ALLOW_RESIZE
+
+    async def remove_trigger_from_cache(self, guild: discord.Guild, trigger: Trigger):
+        try:
+            for t in self.triggers[guild.id]:
+                if t.name == trigger.name:
+                    self.triggers[guild.id].remove(t)
+        except ValueError:
+            # it will get removed on the next reload of the cog
+            log.info("Trigger can't be removed :blobthinking:")
+            pass
+
+    async def can_edit(self, author: discord.Member, trigger: Trigger):
+        """Chekcs to see if the member is allowed to edit the trigger"""
+        if trigger.multi_payload:
+            # explicitly deny editing all multi triggers
+            # they should be deleted and re-added manually
+            return False
+        if trigger.author == author.id:
+            return True
+        if await self.bot.is_owner(author):
+            return True
+        if author is author.guild.owner and "mock" not in trigger.response_type:
+            return True
 
     async def local_perms(self, message: discord.Message) -> bool:
         """Check the user is/isn't locally whitelisted/blacklisted.
@@ -69,8 +94,8 @@ class TriggerHandler:
         guild_settings = self.bot.db.guild(message.guild)
         local_blacklist = await guild_settings.blacklist()
         local_whitelist = await guild_settings.whitelist()
-
-        _ids = [r.id for r in message.author.roles if not r.is_default()]
+        author: discord.Member = cast(discord.Member, message.author)
+        _ids = [r.id for r in author.roles if not r.is_default()]
         _ids.append(message.author.id)
         if local_whitelist:
             return any(i in local_whitelist for i in _ids)
@@ -92,13 +117,14 @@ class TriggerHandler:
 
     async def check_bw_list(self, trigger: Trigger, message: discord.Message) -> bool:
         can_run = True
+        author: discord.Member = cast(discord.Member, message.author)
         if trigger.whitelist:
             can_run = False
             if message.channel.id in trigger.whitelist:
                 can_run = True
             if message.author.id in trigger.whitelist:
                 can_run = True
-            for role in message.author.roles:
+            for role in author.roles:
                 if role.id in trigger.whitelist:
                     can_run = True
             return can_run
@@ -107,7 +133,7 @@ class TriggerHandler:
                 can_run = False
             if message.author.id in trigger.blacklist:
                 can_run = False
-            for role in message.author.roles:
+            for role in author.roles:
                 if role.id in trigger.blacklist:
                     can_run = False
         return can_run
@@ -340,9 +366,17 @@ class TriggerHandler:
                     title=_("Triggers for {guild}").format(guild=ctx.guild.name),
                 )
                 em.set_author(name=author, icon_url=author.avatar_url)
-                em.set_footer(
-                    text=_("Page {page}/{leng}").format(page=page, leng=len(trigger_list))
-                )
+                if trigger.created_at == 0:
+                    em.set_footer(
+                        text=_("Page {page}/{leng}").format(page=page, leng=len(trigger_list))
+                    )
+                else:
+                    em.set_footer(
+                        text=_("Page {page}/{leng} Created").format(
+                            page=page, leng=len(trigger_list)
+                        )
+                    )
+                    em.timestamp = discord.utils.snowflake_time(trigger.created_at)
                 msg_list.append(em)
             else:
                 msg_list.append(info)
@@ -350,8 +384,6 @@ class TriggerHandler:
         return msg_list
 
     async def check_trigger_cooldown(self, message: discord.Message, trigger: Trigger) -> bool:
-        guild = message.guild
-        trigger_list = await self.config.guild(guild).trigger_list()
         now = datetime.now().timestamp()
         if trigger.cooldown:
             if trigger.cooldown["style"] in ["guild", "server"]:
@@ -359,8 +391,6 @@ class TriggerHandler:
                 time = trigger.cooldown["time"]
                 if (now - last) > time:
                     trigger.cooldown["last"] = now
-                    trigger_list[trigger.name] = await trigger.to_json()
-                    await self.config.guild(guild).trigger_list.set(trigger_list)
                     return False
                 else:
                     return True
@@ -369,8 +399,6 @@ class TriggerHandler:
                 snowflake = getattr(message, style)
                 if snowflake.id not in [x["id"] for x in trigger.cooldown["last"]]:
                     trigger.cooldown["last"].append({"id": snowflake.id, "last": now})
-                    trigger_list[trigger.name] = await trigger.to_json()
-                    await self.config.guild(guild).trigger_list.set(trigger_list)
                     return False
                 else:
                     entity_list = trigger.cooldown["last"]
@@ -381,8 +409,6 @@ class TriggerHandler:
                             if (now - last) > time:
                                 trigger.cooldown["last"].remove({"id": snowflake.id, "last": last})
                                 trigger.cooldown["last"].append({"id": snowflake.id, "last": now})
-                                trigger_list[trigger.name] = await trigger.to_json()
-                                await self.config.guild(guild).trigger_list.set(trigger_list)
                                 return False
                             else:
                                 return True
@@ -428,6 +454,9 @@ class TriggerHandler:
             log.info("Could not find channel or message", exc_info=True)
             # If we can't find the channel ignore it
             return
+        if message.author.bot:
+            # somehow we got a bot through the previous check :thonk:
+            return
         await self.check_triggers(message)
 
     async def check_triggers(self, message: discord.Message):
@@ -437,9 +466,11 @@ class TriggerHandler:
             before actually running the regex to avoid possibly long regex
             operations.
         """
-        guild = message.guild
-        channel = message.channel
-        author = message.author
+        guild: discord.Guild = cast(discord.Guild, message.guild)
+        if guild.id not in self.triggers:
+            return
+        channel: discord.TextChannel = cast(discord.TextChannel, message.channel)
+        author: discord.Member = cast(discord.Member, message.author)
 
         local_perms = not await self.local_perms(message)
         global_perms = not await self.global_perms(message)
@@ -449,81 +480,81 @@ class TriggerHandler:
 
         autoimmune = getattr(self.bot, "is_automod_immune", None)
         auto_mod = ["delete", "kick", "ban", "add_role", "remove_role"]
-        async with self.config.guild(guild).trigger_list() as trigger_list:
-            for triggers in trigger_list:
-                # log.debug(triggers)
-                try:
-                    trigger = await Trigger.from_json(trigger_list[triggers])
-                except Exception:
-                    continue
-                allowed_trigger = await self.check_bw_list(trigger, message)
-                is_auto_mod = trigger.response_type in auto_mod
-                if not allowed_trigger:
-                    continue
-                if allowed_trigger and (is_auto_mod and is_mod):
-                    continue
+        # async with self.config.guild(guild).trigger_list() as trigger_list:
+        for trigger in self.triggers[guild.id]:
+            # log.debug(triggers)
+            # try:
+            # trigger = await Trigger.from_json(trigger_list[triggers])
+            # except Exception:
+            # continue
+            allowed_trigger = await self.check_bw_list(trigger, message)
+            is_auto_mod = trigger.response_type in auto_mod
+            if not allowed_trigger:
+                continue
+            if allowed_trigger and (is_auto_mod and is_mod):
+                continue
 
-                if any(t for t in trigger.response_type if t in auto_mod):
-                    if await autoimmune(message):
-                        print_msg = _(
-                            "ReTrigger: {author} is immune from automated actions "
-                        ).format(author=author)
-                        log.debug(print_msg + trigger.name)
-                        continue
-                if "delete" in trigger.response_type:
-                    if channel_perms.manage_messages or is_mod:
-                        print_msg = _(
-                            "ReTrigger: Delete is ignored because {author} "
-                            "has manage messages permission "
-                        ).format(author=author)
-                        log.debug(print_msg + trigger.name)
-                        continue
-                elif "kick" in trigger.response_type:
-                    if channel_perms.kick_members or is_mod:
-                        print_msg = _(
-                            "ReTrigger: Kick is ignored because {author} has kick permissions "
-                        ).format(author=author)
-                        log.debug(print_msg + trigger.name)
-                        continue
-                elif "ban" in trigger.response_type:
-                    if channel_perms.ban_members or is_mod:
-                        print_msg = _(
-                            "ReTrigger: Ban is ignored because {author} has ban permissions "
-                        ).format(author=author)
-                        log.debug(print_msg + trigger.name)
-                        continue
-                elif any(t for t in trigger.response_type if t in ["add_role", "remove_role"]):
-                    if channel_perms.manage_roles or is_mod:
-                        print_msg = _(
-                            "ReTrigger: role change is ignored because {author} "
-                            "has mange roles permissions "
-                        ).format(author=author)
-                        log.debug(print_msg + trigger.name)
-                else:
-                    if any([local_perms, global_perms]):
-                        print_msg = _(
-                            "ReTrigger: Channel is ignored or {author} is blacklisted "
-                        ).format(author=author)
-                        log.debug(print_msg + trigger.name)
-                        continue
-                    if is_command:
-                        continue
-                content = message.content
-                if "delete" in trigger.response_type and trigger.text:
-                    content = (
-                        message.content + " " + " ".join(f.filename for f in message.attachments)
-                    )
+            if any(t for t in trigger.response_type if t in auto_mod):
+                if await autoimmune(message):
+                    print_msg = _(
+                        "ReTrigger: {author} is immune from automated actions "
+                    ).format(author=author)
+                    log.debug(print_msg + trigger.name)
+                    continue
+            if "delete" in trigger.response_type:
+                if channel_perms.manage_messages or is_mod:
+                    print_msg = _(
+                        "ReTrigger: Delete is ignored because {author} "
+                        "has manage messages permission "
+                    ).format(author=author)
+                    log.debug(print_msg + trigger.name)
+                    continue
+            elif "kick" in trigger.response_type:
+                if channel_perms.kick_members or is_mod:
+                    print_msg = _(
+                        "ReTrigger: Kick is ignored because {author} has kick permissions "
+                    ).format(author=author)
+                    log.debug(print_msg + trigger.name)
+                    continue
+            elif "ban" in trigger.response_type:
+                if channel_perms.ban_members or is_mod:
+                    print_msg = _(
+                        "ReTrigger: Ban is ignored because {author} has ban permissions "
+                    ).format(author=author)
+                    log.debug(print_msg + trigger.name)
+                    continue
+            elif any(t for t in trigger.response_type if t in ["add_role", "remove_role"]):
+                if channel_perms.manage_roles or is_mod:
+                    print_msg = _(
+                        "ReTrigger: role change is ignored because {author} "
+                        "has mange roles permissions "
+                    ).format(author=author)
+                    log.debug(print_msg + trigger.name)
+            else:
+                if any([local_perms, global_perms]):
+                    print_msg = _(
+                        "ReTrigger: Channel is ignored or {author} is blacklisted "
+                    ).format(author=author)
+                    log.debug(print_msg + trigger.name)
+                    continue
+                if is_command:
+                    continue
+            content = message.content
+            if "delete" in trigger.response_type and trigger.text:
+                content = (
+                    message.content + " " + " ".join(f.filename for f in message.attachments)
+                )
 
-                search = await self.safe_regex_search(guild, trigger, content)
-                if search == "critical":
-                    del trigger_list[triggers]
-                    return
-                if search != []:
-                    if await self.check_trigger_cooldown(message, trigger):
-                        continue
-                    trigger_list[triggers]["count"] += 1
-                    await self.perform_trigger(message, trigger, search)
-                    return
+            search = await self.safe_regex_search(guild, trigger, content)
+            if search == "critical":
+                self.triggers[guild.id].remove(trigger)
+                return
+            if search != []:
+                if await self.check_trigger_cooldown(message, trigger):
+                    continue
+                trigger.count += 1
+                await self.perform_trigger(message, trigger, search)
+                return
 
     async def safe_regex_search(self, guild: discord.Guild, trigger: Trigger, content: str):
         """
@@ -555,22 +586,24 @@ class TriggerHandler:
                 f"Offending regex `{trigger.regex.pattern}` Name: {trigger.name}"
             )
             log.warning(error_msg)
-            return "critical"
+            return "this doesn't really matter string"
         except Exception:
             log.error(
                 f"Removing {trigger.name} {trigger.regex} in {guild.name} {guild.id}",
                 exc_info=True,
             )
-            return "critical"
+            return "Something went really wrong here but not worth removing"
         else:
             return search
 
     async def perform_trigger(self, message: discord.Message, trigger: Trigger, find: List[str]):
-        own_permissions = message.channel.permissions_for(message.guild.me)
-        guild = message.guild
-        channel = message.channel
-        author = message.author
+
+        guild: discord.Guild = cast(discord.Guild, message.guild)
+        channel: discord.TextChannel = cast(discord.TextChannel, message.channel)
+        author: discord.Member = cast(discord.Member, message.author)
         reason = _("Trigger response: {trigger}").format(trigger=trigger.name)
+        own_permissions = channel.permissions_for(guild.me)
+
         error_in = _("Retrigger encountered an error in ")
         if "resize" in trigger.response_type and own_permissions.attach_files and ALLOW_RESIZE:
             path = str(cog_data_path(self)) + f"/{guild.id}/{trigger.image}"
@@ -694,9 +727,11 @@ class TriggerHandler:
             else:
                 add_response = trigger.text
             for roles in add_response:
-                role = guild.get_role(roles)
+                add_role: discord.Role = cast(discord.Role, guild.get_role(roles))
+                if not add_role:
+                    continue
                 try:
-                    await author.add_roles(role, reason=reason)
+                    await author.add_roles(add_role, reason=reason)
                     if await self.config.guild(guild).add_role_logs():
                         await self.modlog_action(message, trigger, find, _("Added Role"))
                 except Exception:
@@ -710,9 +745,11 @@ class TriggerHandler:
             else:
                 rem_response = trigger.text
             for roles in rem_response:
-                role = guild.get_role(roles)
+                rem_role: discord.Role = cast(discord.Role, guild.get_role(roles))
+                if not rem_role:
+                    continue
                 try:
-                    await author.remove_roles(role, reason=reason)
+                    await author.remove_roles(rem_role, reason=reason)
                     if await self.config.guild(guild).remove_role_logs():
                         await self.modlog_action(message, trigger, find, _("Removed Role"))
                 except Exception:
@@ -809,8 +846,9 @@ class TriggerHandler:
         self, message: discord.Message, trigger: Trigger, find: List[str], action: str
     ):
         modlogs = await self.config.guild(message.guild).modlog()
-        guild = message.guild
-        author = message.author
+        guild: discord.Guild = cast(discord.Guild, message.guild)
+        author: discord.Member = cast(discord.Member, message.author)
+        channel: discord.TextChannel = cast(discord.TextChannel, message.channel)
         if modlogs:
             if modlogs == "default":
                 # We'll get the default modlog channel setup
@@ -831,7 +869,7 @@ class TriggerHandler:
                 colour=discord.Colour.dark_red(),
                 timestamp=datetime.now(),
             )
-            embed.add_field(name=_("Channel"), value=message.channel.mention)
+            embed.add_field(name=_("Channel"), value=channel.mention)
             embed.add_field(name=_("Trigger Name"), value=trigger.name)
             embed.add_field(name=_("Found Triggers"), value=humanize_list(find)[:1024])
             embed.add_field(name=_("Trigger author"), value=f"<@{trigger.author}>")
@@ -850,7 +888,7 @@ class TriggerHandler:
                         "Trigger author: {t_author}\n"
                         "Found Triggers: {found_triggers}\n"
                     ).format(
-                        channel=message.channel.mention,
+                        channel=channel.mention,
                         trigger=trigger.name,
                         t_author=f"{trigger.author}",
                         found_triggers=humanize_list(find)[:1024],
