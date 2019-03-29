@@ -1,7 +1,7 @@
 import asyncio
 import io
 import json
-from typing import List, Set, TYPE_CHECKING, Union, AsyncIterator, Dict, Optional
+from typing import List, Set, TYPE_CHECKING, Union, AsyncIterator, Dict, Optional, cast
 
 import discord
 from redbot.core import commands, checks
@@ -26,13 +26,17 @@ class BanSync(commands.Cog):
     synchronize your bans
     """
 
-    __version__ = "2.1.0"
+    __version__ = "2.2.1"
 
     def __init__(self, bot: "Red", *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.bot: "Red" = bot
         self.config = Config.get_conf(self, identifier=78631113035100160)
-        self.config.register_global(excluded_from_automatic=[])
+        self.config.register_global(
+            excluded_from_automatic=[],
+            per_request_base_ratelimit=0.02,  # Approximately accurate.
+            fractional_usage=0.5,
+        )
 
     @commands.group()
     async def bansyncset(self, ctx: commands.Context):
@@ -205,18 +209,18 @@ class BanSync(commands.Cog):
         """
         user_allowed = False
         user_allowed |= await self.bot.is_owner(mod)
-        mod = guild.get_member(mod.id)
-        if mod:
-            user_allowed |= mod.guild_permissions.ban_members
+        mod_member = guild.get_member(mod.id)
+        if mod_member:
+            user_allowed |= mod_member.guild_permissions.ban_members
             settings = self.bot.db.guild(guild)
             _arid = await settings.admin_role()
-            user_allowed |= any(r.id == _arid for r in mod.roles)
+            user_allowed |= any(r.id == _arid for r in mod_member.roles)
 
         bot_allowed = guild.me.guild_permissions.ban_members
         return user_allowed and bot_allowed
 
     async def ban_filter(
-        self, guild: discord.Guild, mod: discord.user, target: discord.user
+        self, guild: discord.Guild, mod: discord.User, target: discord.User
     ) -> bool:
         """
         Determines if the specified user can ban another specified user in a guild
@@ -233,20 +237,25 @@ class BanSync(commands.Cog):
         """
         is_owner: bool = await self.bot.is_owner(mod)
 
-        mod = guild.get_member(mod.id)
-        if mod is None and not is_owner:
+        mod_member = guild.get_member(mod.id)
+        if mod_member is None and not is_owner:
             return False
 
         can_ban: bool = guild.me.guild_permissions.ban_members
         if not is_owner:
-            can_ban &= mod.guild_permissions.ban_members
+            mod_member = cast(discord.Member, mod_member)
+            can_ban &= mod_member.guild_permissions.ban_members
 
-        target = guild.get_member(target.id)
-        if target is not None:
-            can_ban &= guild.me.top_role > target.top_role or guild.me == guild.owner
-            can_ban &= target != guild.owner
+        target_m = guild.get_member(target.id)
+        if target_m is not None:
+            target_m = cast(discord.Member, target_m)
+            can_ban &= guild.me.top_role > target_m.top_role or guild.me == guild.owner
+            can_ban &= target_m != guild.owner
             if not is_owner:
-                can_ban &= mod.top_role > target.top_role or mod == guild.owner
+                mod_member = cast(discord.Member, mod_member)
+                can_ban &= (
+                    mod_member.top_role > target_m.top_role or mod_member == guild.owner
+                )
         return can_ban
 
     async def ban_or_hackban(
@@ -273,10 +282,10 @@ class BanSync(commands.Cog):
         bool
             Whether the ban was successful
         """
-        member = guild.get_member(_id)
+        member = cast(discord.User, guild.get_member(_id))
         reason = reason or _("Ban synchronization")
         if member is None:
-            member = discord.Object(id=_id)
+            member = cast(discord.User, discord.Object(id=_id))
         if not await self.ban_filter(guild, mod, member):
             return False
         try:
@@ -349,6 +358,7 @@ class BanSync(commands.Cog):
         sources: GuildSet,
         dests: GuildSet,
         auto: bool = False,
+        shred_ratelimits: bool = False,
     ) -> None:
         """
         Processes a synchronization of bans
@@ -364,6 +374,8 @@ class BanSync(commands.Cog):
         auto: bool
             defaults as false, if provided destinations are augmented by the set of guilds which
             are not a source.
+        shred_ratelimits: bool
+            defaults false, allows for bypassing anti-choke measures.
         """
 
         bans: Dict[int, Set[discord.User]] = {}
@@ -387,14 +399,32 @@ class BanSync(commands.Cog):
                     banlist.update(g_bans)
 
         tasks = []
+        if shred_ratelimits and await self.bot.is_owner(usr):
+            artificial_delay = 0.0
+        else:
+            base_limt: float = await self.config.per_request_base_ratelimit()
+            fractional_usage: float = await self.config.fractional_usage()
+            artificial_delay = (base_limt / fractional_usage) * len(dests)
         for guild in dests:
             to_ban = banlist - bans[guild.id]
-            tasks.append(self.do_bans_for_guild(guild=guild, mod=usr, targets=to_ban))
+            tasks.append(
+                self.do_bans_for_guild(
+                    guild=guild,
+                    mod=usr,
+                    targets=to_ban,
+                    artificial_delay=artificial_delay,
+                )
+            )
 
         await asyncio.gather(*tasks)
 
     async def do_bans_for_guild(
-        self, *, guild: discord.Guild, mod: discord.User, targets: Set[discord.User]
+        self,
+        *,
+        guild: discord.Guild,
+        mod: discord.User,
+        targets: Set[discord.User],
+        artificial_delay: float,
     ):
         """
         This exists to speed up large syncs and consume ratelimits concurrently 
@@ -405,9 +435,14 @@ class BanSync(commands.Cog):
                 await self.ban_or_hackban(
                     guild, target.id, mod=mod, reason=_("Ban synchronization")
                 )
-                count += 1
-                if count % 10:
-                    await asyncio.sleep(0.1)
+                if artificial_delay:
+                    await asyncio.sleep(artificial_delay)
+                else:
+                    count += 1
+                    if count % 10:
+                        # This is a safety measure to run infrequently
+                        # but only if no per ban delay is there already.
+                        await asyncio.sleep(0.1)
 
     @commands.command(name="bansync")
     async def ban_sync(self, ctx, auto=False):
