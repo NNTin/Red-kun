@@ -57,7 +57,7 @@ class Tweets(commands.Cog):
 
     def __init__(self, bot):
         self.bot = bot
-        self.config = Config.get_conf(self, 133926854)
+        self.config = Config.get_conf(self, 133926854, force_registration=True)
         default_global = {
             "api": {
                 "consumer_key": "",
@@ -88,26 +88,29 @@ class Tweets(commands.Cog):
     async def start_stream(self):
         await self.bot.wait_until_ready()
         api = None
+        base_sleep = 300
+        count = 1
         while self is self.bot.get_cog("Tweets"):
             if not await self.config.api.consumer_key():
                 # Don't run the loop until tokens are set
-                await asyncio.sleep(300)
+                await asyncio.sleep(base_sleep)
                 continue
             tweet_list = list(await self.config.accounts())
-            if tweet_list == []:
-                await asyncio.sleep(300)
+            if not tweet_list:
+                await asyncio.sleep(base_sleep)
                 continue
             if not api:
+                api = await self.authenticate()
+            try:
+                if not getattr(self.mystream, "running"):
+                    count += 1
+                    await self._start_stream(tweet_list, api)
+            except AttributeError:
                 try:
-                    api = await self.authenticate()
+                    await self._start_stream(tweet_list, api)
                 except Exception:
-                    # Just continue on our own until this works
-                    # No sense trying to restart the stream if we can't authenticate
-                    await asyncio.sleep(300)
-                    continue
-            if not getattr(self.mystream, "running", False):
-                await self._start_stream(tweet_list, api)
-            await asyncio.sleep(300)
+                    pass
+            await asyncio.sleep(base_sleep*count)
 
     async def _start_stream(self, tweet_list, api):
         try:
@@ -430,18 +433,14 @@ class Tweets(commands.Cog):
         cnt = count
         if count > 25:
             cnt = 25
-        followed_accounts = [x for x in await self.config.accounts()]
-        if username.lower() in [x["twitter_name"].lower() for x in followed_accounts]:
-            account = [
-                x for x in followed_accounts if username.lower() == x["twitter_name"].lower()
-            ]
-            replies_on = account[0]["replies"]
-        else:
-            replies_on = False
         msg_list = []
         api = await self.authenticate()
         try:
             for status in tw.Cursor(api.user_timeline, id=username).items(cnt):
+                if str(status.user.id) in self.accounts:
+                    replies_on = self.accounts[str(status.user.id)]["replies"]
+                else:
+                    replies_on = False
                 if status.in_reply_to_screen_name is not None and not replies_on:
                     continue
                 msg_list.append(status)
@@ -542,8 +541,6 @@ class Tweets(commands.Cog):
         """
         api = await self.authenticate()
         try:
-            user_id = None
-            screen_name = None
             for status in tw.Cursor(api.user_timeline, id=username).items(1):
                 user_id = status.user.id
                 screen_name = status.user.screen_name
@@ -551,9 +548,6 @@ class Tweets(commands.Cog):
             msg = _("Whoops! Something went wrong here. The error code is ") + f"{e} {username}"
             log.error(msg, exc_info=True)
             await ctx.send(_("That username does not exist."))
-            return
-        if user_id is None:
-            await ctx.send(_("No status was retrieved!"))
             return
         if channel is None:
             channel = ctx.message.channel
@@ -607,7 +601,7 @@ class Tweets(commands.Cog):
                 embed.add_field(name=channel.name, value=account_list[:-2])
         await ctx.send(embed=embed)
 
-    async def add_account(self, channel, user_id, screen_name):
+    async def add_account(self, channel: discord.TextChannel, user_id: int, screen_name: str):
         """
             Adds a twitter account to the specified channel.
             Returns False if it is already in the channel.
@@ -615,16 +609,16 @@ class Tweets(commands.Cog):
         # followed_accounts = await self.config.accounts()
 
         # is_followed, twitter_account = await self.is_followed_account(user_id)
-        if user_id in self.accounts:
-            if channel.id in self.accounts[user_id]["channel"]:
+        if str(user_id) in self.accounts:
+            if channel.id in self.accounts[str(user_id)]["channel"]:
                 return False
             else:
-                self.accounts[user_id]["channel"].append(channel.id)
+                self.accounts[str(user_id)]["channel"].append(channel.id)
                 await self.config.accounts.set(self.accounts)
                 # await self.config.accounts.set(followed_accounts)
         else:
             twitter_account = TweetEntry(user_id, screen_name, [channel.id], 0)
-            self.accounts[user_id] = twitter_account.to_json()
+            self.accounts[str(user_id)] = twitter_account.to_json()
             await self.config.accounts.set(self.accounts)
         return True
 
@@ -762,17 +756,19 @@ class Tweets(commands.Cog):
             for page in pagify(msg_send, ["\n"]):
                 await ctx.send(page)
 
-    async def del_account(self, channel_id, user_id, screen_name):
+    async def del_account(self, channel_id: int, user_id: int, screen_name: str = ""):
         # account_ids = [x["twitter_id"] for x in await self.config.accounts()]
-        if user_id not in self.accounts:
+        if str(user_id) not in self.accounts:
             return False
         # account_list = [x for x in await self.config.accounts()]
         # twitter_account = [x for x in account_list if user_id == x["twitter_id"]][0]
-        if channel_id in self.accounts[user_id]:
-            self.accounts[user_id]["channel"].remove(channel_id)
+        if channel_id in self.accounts[str(user_id)]["channel"]:
+            self.accounts[str(user_id)]["channel"].remove(channel_id)
             # await self.config.accounts.set(account_list)
-            if len(self.accounts[user_id]["channel"]) < 1:
-                del self.accounts[user_id]
+            if len(self.accounts[str(user_id)]["channel"]) < 1:
+                del self.accounts[str(user_id)]
+        else:
+            return False
         await self.config.accounts.set(self.accounts)
         return True
 
@@ -789,18 +785,13 @@ class Tweets(commands.Cog):
         if channel is None:
             channel = ctx.message.channel
         try:
-            user_id = None
-            screen_name = None
             for status in tw.Cursor(api.user_timeline, id=username).items(1):
-                user_id = status.user.id
-                screen_name = status.user.screen_name
+                user_id: int = status.user.id
+                screen_name: str = status.user.screen_name
         except tw.TweepError as e:
             msg = _("Whoops! Something went wrong here. The error code is ") + f"{e} {username}"
             log.error(msg, exc_info=True)
             await ctx.send(_("Something went wrong here! Try again"))
-            return
-        if user_id is None:
-            await ctx.send(_("No status was retrieved! Try again"))
             return
         removed = await self.del_account(channel.id, user_id, screen_name)
         if removed:
