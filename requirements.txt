@@ -15,7 +15,7 @@ motor==2.0.0
 multidict==4.4.2
 pymongo==3.7.1
 python-Levenshtein==0.12.0
-PyYAML==3.13
+PyYAML==5.1
 raven==6.9.0
 raven-aiohttp==0.7.0
 git+https://github.com/NNTin/Red-DiscordBot@lavalink-v3#egg=Red-DiscordBot
