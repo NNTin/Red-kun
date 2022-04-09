@@ -23,7 +23,7 @@
     }
   },
   "addons": [
-    "mongolab"
+    "mlabmongodb"
   ],
   "buildpacks": [
     {
